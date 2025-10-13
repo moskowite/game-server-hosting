@@ -1,0 +1,133 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  pr-validation:
+    name: PR Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Restore dependencies
+      run: dotnet restore GameServerHosting.sln
+    
+    - name: Build
+      run: dotnet build GameServerHosting.sln --configuration Debug --no-restore
+    
+    - name: Check for build warnings
+      run: |
+        BUILD_OUTPUT=$(dotnet build GameServerHosting.sln --configuration Release --no-restore 2>&1)
+        WARNING_COUNT=$(echo "$BUILD_OUTPUT" | grep -c "warning" || true)
+        echo "Total warnings: $WARNING_COUNT"
+        echo "## Build Warnings 📊" >> $GITHUB_STEP_SUMMARY
+        echo "**Total Warnings**: $WARNING_COUNT" >> $GITHUB_STEP_SUMMARY
+    
+    - name: PR Size Check
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          const additions = pr.additions;
+          const deletions = pr.deletions;
+          const totalChanges = additions + deletions;
+          
+          let message = `## PR Size Analysis 📏\n\n`;
+          message += `- **Additions**: ${additions}\n`;
+          message += `- **Deletions**: ${deletions}\n`;
+          message += `- **Total Changes**: ${totalChanges}\n\n`;
+          
+          if (totalChanges > 1000) {
+            message += `⚠️ **Large PR Warning**: This PR is quite large (${totalChanges} lines). Consider breaking it into smaller PRs for easier review.\n`;
+            core.warning(`Large PR detected: ${totalChanges} lines changed`);
+          } else if (totalChanges > 500) {
+            message += `ℹ️ This is a medium-sized PR. Review may take some time.\n`;
+          } else {
+            message += `✅ This is a reasonably sized PR.\n`;
+          }
+          
+          await core.summary.addRaw(message).write();
+    
+    - name: Check PR Title Format
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          const title = pr.title;
+          
+          // Common PR title patterns
+          const patterns = [
+            /^feat:/i,
+            /^fix:/i,
+            /^docs:/i,
+            /^style:/i,
+            /^refactor:/i,
+            /^test:/i,
+            /^chore:/i,
+            /^perf:/i,
+            /^ci:/i,
+            /^\[MOS-\d+\]/i  // Matches Linear issue IDs like [MOS-8]
+          ];
+          
+          const hasValidPrefix = patterns.some(pattern => pattern.test(title));
+          
+          if (!hasValidPrefix) {
+            core.warning(`PR title should follow conventional commits format (feat:, fix:, etc.) or include issue ID [MOS-X]`);
+          }
+
+  label-check:
+    name: Label Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Check for labels
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = context.payload.pull_request;
+          const labels = pr.labels.map(label => label.name);
+          
+          let message = `## PR Labels 🏷️\n\n`;
+          
+          if (labels.length === 0) {
+            message += `⚠️ **No labels found**: Please add relevant labels to this PR.\n`;
+            core.warning('No labels found on PR');
+          } else {
+            message += `**Labels**: ${labels.join(', ')}\n`;
+          }
+          
+          await core.summary.addRaw(message).write();
+
+  conflict-check:
+    name: Merge Conflict Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Check for merge conflicts
+      run: |
+        git fetch origin ${{ github.base_ref }}
+        if git merge-tree $(git merge-base HEAD origin/${{ github.base_ref }}) HEAD origin/${{ github.base_ref }} | grep -q "<<<<<<"; then
+          echo "::error::Merge conflicts detected. Please resolve conflicts before merging."
+          exit 1
+        else
+          echo "✅ No merge conflicts detected"
+        fi
