@@ -23,6 +23,11 @@ public class Order
     public Guid? ServerId { get; set; }
 
     /// <summary>
+    /// Server plan ID (billing plan selected)
+    /// </summary>
+    public Guid? ServerPlanId { get; set; }
+
+    /// <summary>
     /// Human-readable order number (e.g., ORD-20251013-00001)
     /// </summary>
     public string OrderNumber { get; set; } = string.Empty;
@@ -88,4 +93,14 @@ public class Order
     /// Associated game server (if applicable)
     /// </summary>
     public GameServer? GameServer { get; set; }
+
+    /// <summary>
+    /// Server plan selected for this order
+    /// </summary>
+    public ServerPlan? ServerPlan { get; set; }
+
+    /// <summary>
+    /// Payment transactions for this order
+    /// </summary>
+    public ICollection<Payment> Payments { get; set; } = new List<Payment>();
 }

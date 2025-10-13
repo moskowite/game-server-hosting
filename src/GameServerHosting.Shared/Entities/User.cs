@@ -78,4 +78,9 @@ public class User
     /// Orders placed by this user
     /// </summary>
     public ICollection<Order> Orders { get; set; } = new List<Order>();
+
+    /// <summary>
+    /// Payment transactions made by this user
+    /// </summary>
+    public ICollection<Payment> Payments { get; set; } = new List<Payment>();
 }
