@@ -21,6 +21,13 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<GameServer
         var optionsBuilder = new DbContextOptionsBuilder<GameServerDbContext>();
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            throw new InvalidOperationException(
+                "Connection string 'DefaultConnection' not found in configuration. " +
+                "Ensure appsettings.json contains a valid DefaultConnection connection string.");
+        }
+
         optionsBuilder.UseNpgsql(connectionString);
 
         return new GameServerDbContext(optionsBuilder.Options);
