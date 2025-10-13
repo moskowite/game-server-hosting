@@ -87,9 +87,11 @@ public class GameServerDbContext : DbContext
                 .HasColumnName("last_login_at");
             
             // Indexes
-            entity.HasIndex(e => e.Email).IsUnique();
-            entity.HasIndex(e => e.Username).IsUnique();
-            entity.HasIndex(e => e.Role);
+            entity.HasIndex(e => e.Email).IsUnique().HasDatabaseName("idx_users_email");
+            entity.HasIndex(e => e.Username).IsUnique().HasDatabaseName("idx_users_username");
+            entity.HasIndex(e => e.Role).HasDatabaseName("idx_users_role");
+            entity.HasIndex(e => e.IsActive).HasDatabaseName("idx_users_is_active");
+            entity.HasIndex(e => e.CreatedAt).HasDatabaseName("idx_users_created_at");
             
             // Relationships
             entity.HasMany(e => e.GameServers)
@@ -111,7 +113,15 @@ public class GameServerDbContext : DbContext
         // ===== ServerType Configuration =====
         modelBuilder.Entity<ServerType>(entity =>
         {
-            entity.ToTable("server_types");
+            entity.ToTable("server_types", t =>
+            {
+                t.HasCheckConstraint("ck_server_types_cpu_cores", "cpu_cores > 0");
+                t.HasCheckConstraint("ck_server_types_ram_mb", "ram_mb > 0");
+                t.HasCheckConstraint("ck_server_types_disk_gb", "disk_gb > 0");
+                t.HasCheckConstraint("ck_server_types_max_players", "max_players > 0");
+                t.HasCheckConstraint("ck_server_types_hourly_price", "hourly_price >= 0");
+                t.HasCheckConstraint("ck_server_types_monthly_price", "monthly_price >= 0");
+            });
             entity.HasKey(e => e.Id);
             
             entity.Property(e => e.Id)
@@ -185,9 +195,10 @@ public class GameServerDbContext : DbContext
                 .IsRequired();
             
             // Indexes
-            entity.HasIndex(e => e.Name).IsUnique();
-            entity.HasIndex(e => e.GameName);
-            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.Name).IsUnique().HasDatabaseName("idx_server_types_name");
+            entity.HasIndex(e => e.GameName).HasDatabaseName("idx_server_types_game_name");
+            entity.HasIndex(e => e.IsActive).HasDatabaseName("idx_server_types_is_active");
+            entity.HasIndex(e => new { e.GameName, e.IsActive }).HasDatabaseName("idx_server_types_game_active");
             
             // Relationships
             entity.HasMany(e => e.GameServers)
@@ -204,7 +215,10 @@ public class GameServerDbContext : DbContext
         // ===== GameServer Configuration =====
         modelBuilder.Entity<GameServer>(entity =>
         {
-            entity.ToTable("game_servers");
+            entity.ToTable("game_servers", t =>
+            {
+                t.HasCheckConstraint("ck_game_servers_port", "port IS NULL OR (port >= 1 AND port <= 65535)");
+            });
             entity.HasKey(e => e.Id);
             
             entity.Property(e => e.Id)
@@ -268,11 +282,17 @@ public class GameServerDbContext : DbContext
                 .IsRequired();
             
             // Indexes
-            entity.HasIndex(e => e.UserId);
-            entity.HasIndex(e => e.ServerTypeId);
-            entity.HasIndex(e => e.Status);
-            entity.HasIndex(e => e.ExpiresAt);
-            entity.HasIndex(e => new { e.UserId, e.ServerName }).IsUnique();
+            entity.HasIndex(e => e.UserId).HasDatabaseName("idx_game_servers_user_id");
+            entity.HasIndex(e => e.ServerTypeId).HasDatabaseName("idx_game_servers_server_type_id");
+            entity.HasIndex(e => e.Status).HasDatabaseName("idx_game_servers_status");
+            entity.HasIndex(e => e.ExpiresAt).HasDatabaseName("idx_game_servers_expires_at");
+            entity.HasIndex(e => new { e.UserId, e.ServerName }).IsUnique().HasDatabaseName("idx_game_servers_user_server_name");
+            entity.HasIndex(e => new { e.IpAddress, e.Port })
+                .IsUnique()
+                .HasDatabaseName("idx_game_servers_ip_port")
+                .HasFilter("ip_address IS NOT NULL AND port IS NOT NULL");
+            entity.HasIndex(e => new { e.Status, e.ExpiresAt }).HasDatabaseName("idx_game_servers_status_expires");
+            entity.HasIndex(e => e.LastHeartbeatAt).HasDatabaseName("idx_game_servers_last_heartbeat");
             
             // Relationships configured in User and ServerType entities
             entity.HasMany(e => e.Orders)
@@ -284,7 +304,10 @@ public class GameServerDbContext : DbContext
         // ===== Order Configuration =====
         modelBuilder.Entity<Order>(entity =>
         {
-            entity.ToTable("orders");
+            entity.ToTable("orders", t =>
+            {
+                t.HasCheckConstraint("ck_orders_total_amount", "total_amount >= 0");
+            });
             entity.HasKey(e => e.Id);
             
             entity.Property(e => e.Id)
@@ -359,12 +382,15 @@ public class GameServerDbContext : DbContext
                 .IsRequired();
             
             // Indexes
-            entity.HasIndex(e => e.UserId);
-            entity.HasIndex(e => e.ServerId);
-            entity.HasIndex(e => e.ServerPlanId);
-            entity.HasIndex(e => e.OrderNumber).IsUnique();
-            entity.HasIndex(e => e.Status);
-            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.UserId).HasDatabaseName("idx_orders_user_id");
+            entity.HasIndex(e => e.ServerId).HasDatabaseName("idx_orders_server_id");
+            entity.HasIndex(e => e.ServerPlanId).HasDatabaseName("idx_orders_server_plan_id");
+            entity.HasIndex(e => e.OrderNumber).IsUnique().HasDatabaseName("idx_orders_order_number");
+            entity.HasIndex(e => e.Status).HasDatabaseName("idx_orders_status");
+            entity.HasIndex(e => e.CreatedAt).HasDatabaseName("idx_orders_created_at");
+            entity.HasIndex(e => new { e.UserId, e.Status }).HasDatabaseName("idx_orders_user_status");
+            entity.HasIndex(e => new { e.UserId, e.CreatedAt }).HasDatabaseName("idx_orders_user_created");
+            entity.HasIndex(e => e.PaymentDate).HasDatabaseName("idx_orders_payment_date");
             
             // Relationships configured in User and GameServer entities
             entity.HasOne(e => e.ServerPlan)
@@ -381,7 +407,12 @@ public class GameServerDbContext : DbContext
         // ===== ServerPlan Configuration =====
         modelBuilder.Entity<ServerPlan>(entity =>
         {
-            entity.ToTable("server_plans");
+            entity.ToTable("server_plans", t =>
+            {
+                t.HasCheckConstraint("ck_server_plans_price", "price >= 0");
+                t.HasCheckConstraint("ck_server_plans_duration", "duration_hours > 0");
+                t.HasCheckConstraint("ck_server_plans_discount", "discount_percentage >= 0 AND discount_percentage <= 100");
+            });
             entity.HasKey(e => e.Id);
             
             entity.Property(e => e.Id)
@@ -450,10 +481,11 @@ public class GameServerDbContext : DbContext
                 .IsRequired();
             
             // Indexes
-            entity.HasIndex(e => e.ServerTypeId);
-            entity.HasIndex(e => new { e.ServerTypeId, e.BillingCycle }).IsUnique();
-            entity.HasIndex(e => e.IsActive);
-            entity.HasIndex(e => e.DisplayOrder);
+            entity.HasIndex(e => e.ServerTypeId).HasDatabaseName("idx_server_plans_server_type_id");
+            entity.HasIndex(e => new { e.ServerTypeId, e.BillingCycle }).IsUnique().HasDatabaseName("idx_server_plans_type_cycle");
+            entity.HasIndex(e => e.IsActive).HasDatabaseName("idx_server_plans_is_active");
+            entity.HasIndex(e => e.DisplayOrder).HasDatabaseName("idx_server_plans_display_order");
+            entity.HasIndex(e => new { e.ServerTypeId, e.IsActive, e.DisplayOrder }).HasDatabaseName("idx_server_plans_type_active_order");
             
             // Relationships configured in ServerType entity
         });
@@ -461,7 +493,11 @@ public class GameServerDbContext : DbContext
         // ===== Payment Configuration =====
         modelBuilder.Entity<Payment>(entity =>
         {
-            entity.ToTable("payments");
+            entity.ToTable("payments", t =>
+            {
+                t.HasCheckConstraint("ck_payments_amount", "amount >= 0");
+                t.HasCheckConstraint("ck_payments_refund_amount", "refund_amount IS NULL OR (refund_amount >= 0 AND refund_amount <= amount)");
+            });
             entity.HasKey(e => e.Id);
             
             entity.Property(e => e.Id)
@@ -562,11 +598,15 @@ public class GameServerDbContext : DbContext
                 .IsRequired();
             
             // Indexes
-            entity.HasIndex(e => e.OrderId);
-            entity.HasIndex(e => e.UserId);
-            entity.HasIndex(e => e.Status);
-            entity.HasIndex(e => e.TransactionId);
-            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.OrderId).HasDatabaseName("idx_payments_order_id");
+            entity.HasIndex(e => e.UserId).HasDatabaseName("idx_payments_user_id");
+            entity.HasIndex(e => e.Status).HasDatabaseName("idx_payments_status");
+            entity.HasIndex(e => e.TransactionId).HasDatabaseName("idx_payments_transaction_id");
+            entity.HasIndex(e => e.CreatedAt).HasDatabaseName("idx_payments_created_at");
+            entity.HasIndex(e => new { e.UserId, e.Status }).HasDatabaseName("idx_payments_user_status");
+            entity.HasIndex(e => new { e.OrderId, e.Status }).HasDatabaseName("idx_payments_order_status");
+            entity.HasIndex(e => e.CompletedAt).HasDatabaseName("idx_payments_completed_at");
+            entity.HasIndex(e => e.RefundedAt).HasDatabaseName("idx_payments_refunded_at");
             
             // Relationships configured in Order and User entities
         });
