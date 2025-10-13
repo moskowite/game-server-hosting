@@ -1,5 +1,8 @@
 # Game Server Hosting Platform
 
+[![CI Pipeline](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/ci.yml)
+[![CD Pipeline](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/cd.yml/badge.svg)](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/cd.yml)
+
 A .NET 8.0 solution for game server hosting marketplace.
 
 ## Solution Structure
@@ -76,6 +79,35 @@ To run both the API and Client simultaneously, open two terminal windows and run
 
 - `GameServerHosting.Api` → references → `GameServerHosting.Shared`
 - `GameServerHosting.Client` → references → `GameServerHosting.Shared`
+
+## CI/CD Pipeline
+
+This project uses GitHub Actions for continuous integration and deployment.
+
+### Workflows
+
+- **CI Pipeline**: Automated builds, tests, code quality checks, and security scans on every push and PR
+- **CD Pipeline**: Automated deployments to staging and production environments
+- **PR Checks**: Fast feedback on pull requests with validation and conflict detection
+- **Dependabot**: Automated dependency updates for NuGet packages and GitHub Actions
+
+For detailed CI/CD setup and usage instructions, see [CI/CD Setup Guide](CI_CD_SETUP.md).
+
+### Quick Commands
+
+```bash
+# View workflow runs
+gh run list
+
+# Trigger CI manually
+gh workflow run ci.yml
+
+# Deploy to staging
+gh workflow run cd.yml -f environment=staging
+
+# Deploy to production
+gh workflow run cd.yml -f environment=production
+```
 
 ## Development
 
