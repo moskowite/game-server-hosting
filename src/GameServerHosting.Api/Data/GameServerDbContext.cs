@@ -14,8 +14,10 @@ public class GameServerDbContext : DbContext
     // DbSet properties
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<ServerType> ServerTypes { get; set; } = null!;
+    public DbSet<ServerPlan> ServerPlans { get; set; } = null!;
     public DbSet<GameServer> GameServers { get; set; } = null!;
     public DbSet<Order> Orders { get; set; } = null!;
+    public DbSet<Payment> Payments { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -96,6 +98,11 @@ public class GameServerDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
             
             entity.HasMany(e => e.Orders)
+                .WithOne(e => e.User)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            
+            entity.HasMany(e => e.Payments)
                 .WithOne(e => e.User)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
@@ -184,6 +191,11 @@ public class GameServerDbContext : DbContext
             
             // Relationships
             entity.HasMany(e => e.GameServers)
+                .WithOne(e => e.ServerType)
+                .HasForeignKey(e => e.ServerTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            
+            entity.HasMany(e => e.ServerPlans)
                 .WithOne(e => e.ServerType)
                 .HasForeignKey(e => e.ServerTypeId)
                 .OnDelete(DeleteBehavior.Restrict);
@@ -286,6 +298,9 @@ public class GameServerDbContext : DbContext
             entity.Property(e => e.ServerId)
                 .HasColumnName("server_id");
             
+            entity.Property(e => e.ServerPlanId)
+                .HasColumnName("server_plan_id");
+            
             entity.Property(e => e.OrderNumber)
                 .HasColumnName("order_number")
                 .HasMaxLength(50)
@@ -346,11 +361,214 @@ public class GameServerDbContext : DbContext
             // Indexes
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.ServerId);
+            entity.HasIndex(e => e.ServerPlanId);
             entity.HasIndex(e => e.OrderNumber).IsUnique();
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.CreatedAt);
             
             // Relationships configured in User and GameServer entities
+            entity.HasOne(e => e.ServerPlan)
+                .WithMany(e => e.Orders)
+                .HasForeignKey(e => e.ServerPlanId)
+                .OnDelete(DeleteBehavior.Restrict);
+            
+            entity.HasMany(e => e.Payments)
+                .WithOne(e => e.Order)
+                .HasForeignKey(e => e.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ===== ServerPlan Configuration =====
+        modelBuilder.Entity<ServerPlan>(entity =>
+        {
+            entity.ToTable("server_plans");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Id)
+                .HasColumnName("id")
+                .HasDefaultValueSql("uuid_generate_v4()");
+            
+            entity.Property(e => e.ServerTypeId)
+                .HasColumnName("server_type_id")
+                .IsRequired();
+            
+            entity.Property(e => e.Name)
+                .HasColumnName("name")
+                .HasMaxLength(100)
+                .IsRequired();
+            
+            entity.Property(e => e.BillingCycle)
+                .HasColumnName("billing_cycle")
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+            
+            entity.Property(e => e.Price)
+                .HasColumnName("price")
+                .HasColumnType("decimal(10,2)")
+                .IsRequired();
+            
+            entity.Property(e => e.Currency)
+                .HasColumnName("currency")
+                .HasMaxLength(3)
+                .HasDefaultValue("USD")
+                .IsRequired();
+            
+            entity.Property(e => e.DurationHours)
+                .HasColumnName("duration_hours")
+                .IsRequired();
+            
+            entity.Property(e => e.DiscountPercentage)
+                .HasColumnName("discount_percentage")
+                .HasColumnType("decimal(5,2)")
+                .HasDefaultValue(0)
+                .IsRequired();
+            
+            entity.Property(e => e.IsActive)
+                .HasColumnName("is_active")
+                .HasDefaultValue(true)
+                .IsRequired();
+            
+            entity.Property(e => e.DisplayOrder)
+                .HasColumnName("display_order")
+                .HasDefaultValue(0)
+                .IsRequired();
+            
+            entity.Property(e => e.Description)
+                .HasColumnName("description")
+                .HasDefaultValue(string.Empty)
+                .IsRequired();
+            
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .IsRequired();
+            
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("updated_at")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .IsRequired();
+            
+            // Indexes
+            entity.HasIndex(e => e.ServerTypeId);
+            entity.HasIndex(e => new { e.ServerTypeId, e.BillingCycle }).IsUnique();
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.DisplayOrder);
+            
+            // Relationships configured in ServerType entity
+        });
+
+        // ===== Payment Configuration =====
+        modelBuilder.Entity<Payment>(entity =>
+        {
+            entity.ToTable("payments");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Id)
+                .HasColumnName("id")
+                .HasDefaultValueSql("uuid_generate_v4()");
+            
+            entity.Property(e => e.OrderId)
+                .HasColumnName("order_id")
+                .IsRequired();
+            
+            entity.Property(e => e.UserId)
+                .HasColumnName("user_id")
+                .IsRequired();
+            
+            entity.Property(e => e.Amount)
+                .HasColumnName("amount")
+                .HasColumnType("decimal(10,2)")
+                .IsRequired();
+            
+            entity.Property(e => e.Currency)
+                .HasColumnName("currency")
+                .HasMaxLength(3)
+                .HasDefaultValue("USD")
+                .IsRequired();
+            
+            entity.Property(e => e.PaymentMethod)
+                .HasColumnName("payment_method")
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+            
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+            
+            entity.Property(e => e.TransactionId)
+                .HasColumnName("transaction_id")
+                .HasMaxLength(255);
+            
+            entity.Property(e => e.PaymentGateway)
+                .HasColumnName("payment_gateway")
+                .HasMaxLength(50);
+            
+            entity.Property(e => e.PaymentIdentifier)
+                .HasColumnName("payment_identifier")
+                .HasMaxLength(100);
+            
+            entity.Property(e => e.GatewayResponse)
+                .HasColumnName("gateway_response")
+                .HasColumnType("jsonb")
+                .HasDefaultValue("{}")
+                .IsRequired();
+            
+            entity.Property(e => e.ErrorMessage)
+                .HasColumnName("error_message");
+            
+            entity.Property(e => e.ErrorCode)
+                .HasColumnName("error_code")
+                .HasMaxLength(50);
+            
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .IsRequired();
+            
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("updated_at")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .IsRequired();
+            
+            entity.Property(e => e.CompletedAt)
+                .HasColumnName("completed_at");
+            
+            entity.Property(e => e.RefundedAt)
+                .HasColumnName("refunded_at");
+            
+            entity.Property(e => e.RefundAmount)
+                .HasColumnName("refund_amount")
+                .HasColumnType("decimal(10,2)");
+            
+            entity.Property(e => e.RefundReason)
+                .HasColumnName("refund_reason");
+            
+            entity.Property(e => e.IpAddress)
+                .HasColumnName("ip_address")
+                .HasMaxLength(45);
+            
+            entity.Property(e => e.UserAgent)
+                .HasColumnName("user_agent")
+                .HasMaxLength(500);
+            
+            entity.Property(e => e.Metadata)
+                .HasColumnName("metadata")
+                .HasColumnType("jsonb")
+                .HasDefaultValue("{}")
+                .IsRequired();
+            
+            // Indexes
+            entity.HasIndex(e => e.OrderId);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.TransactionId);
+            entity.HasIndex(e => e.CreatedAt);
+            
+            // Relationships configured in Order and User entities
         });
     }
 }

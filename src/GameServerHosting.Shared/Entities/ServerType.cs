@@ -86,4 +86,9 @@ public class ServerType
     /// Game servers using this server type
     /// </summary>
     public ICollection<GameServer> GameServers { get; set; } = new List<GameServer>();
+
+    /// <summary>
+    /// Billing plans available for this server type
+    /// </summary>
+    public ICollection<ServerPlan> ServerPlans { get; set; } = new List<ServerPlan>();
 }
