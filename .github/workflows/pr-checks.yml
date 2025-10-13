@@ -14,12 +14,12 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
     
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
     
@@ -38,7 +38,7 @@ jobs:
         echo "**Total Warnings**: $WARNING_COUNT" >> $GITHUB_STEP_SUMMARY
     
     - name: PR Size Check
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         script: |
           const pr = context.payload.pull_request;
@@ -63,7 +63,7 @@ jobs:
           await core.summary.addRaw(message).write();
     
     - name: Check PR Title Format
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         script: |
           const pr = context.payload.pull_request;
@@ -95,7 +95,7 @@ jobs:
     
     steps:
     - name: Check for labels
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       with:
         script: |
           const pr = context.payload.pull_request;
@@ -118,7 +118,7 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
     
