@@ -155,30 +155,6 @@ try
 
     app.UseHttpsRedirection();
 
-    // Sample endpoint (can be removed later)
-    var summaries = new[]
-    {
-        "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-    };
-
-    app.MapGet("/weatherforecast", () =>
-    {
-        var forecast = Enumerable.Range(1, 5).Select(index =>
-            new WeatherForecast
-            (
-                DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                Random.Shared.Next(-20, 55),
-                summaries[Random.Shared.Next(summaries.Length)]
-            ))
-            .ToArray();
-        
-        Log.Information("Weather forecast requested, returning {Count} items", forecast.Length);
-        return forecast;
-    })
-    .WithName("GetWeatherForecast")
-    .WithOpenApi()
-    .WithTags("Sample");
-
     // Health check endpoint
     app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
         .WithName("HealthCheck")
@@ -196,10 +172,4 @@ catch (Exception ex)
 finally
 {
     Log.CloseAndFlush();
-}
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}2 + (int)(TemperatureC / 0.5556);
 }
