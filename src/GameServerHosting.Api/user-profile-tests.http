@@ -1,0 +1,280 @@
+### User Profile API Tests
+### For use with VS Code REST Client extension or similar tools
+
+@baseUrl = http://localhost:5000
+@email = testprofile@example.com
+@userName = profileuser
+@password = TestPass123!
+@accessToken = YOUR_ACCESS_TOKEN_HERE
+
+### Setup: Register a new user
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "userName": "{{userName}}",
+  "email": "{{email}}",
+  "firstName": "Profile",
+  "lastName": "Tester",
+  "password": "{{password}}"
+}
+
+### Expected Response:
+### {
+###   "message": "Registration successful! Please check your email to verify your account.",
+###   "email": "testprofile@example.com",
+###   "requiresEmailVerification": true
+### }
+
+###
+
+### Setup: Verify email (replace TOKEN_FROM_EMAIL with actual token)
+POST {{baseUrl}}/api/auth/verify-email
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "token": "TOKEN_FROM_EMAIL"
+}
+
+###
+
+### Setup: Login to get access token
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "rememberMe": false
+}
+
+### Expected Response:
+### {
+###   "accessToken": "jwt_token...",
+###   "refreshToken": "refresh_token...",
+###   "tokenType": "Bearer",
+###   "expiresIn": 3600,
+###   "userId": "...",
+###   "userName": "profileuser",
+###   "email": "testprofile@example.com",
+###   "role": "User"
+### }
+### 
+### IMPORTANT: Copy the accessToken from the response and replace YOUR_ACCESS_TOKEN_HERE above
+
+###
+
+### 1. GET /api/users/profile - Get current user profile
+GET {{baseUrl}}/api/users/profile
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+### Expected Response (200 OK):
+### {
+###   "id": "user-guid",
+###   "userName": "profileuser",
+###   "email": "testprofile@example.com",
+###   "emailConfirmed": true,
+###   "firstName": "Profile",
+###   "lastName": "Tester",
+###   "phoneNumber": null,
+###   "role": "User",
+###   "isActive": true,
+###   "createdAt": "2024-01-01T00:00:00Z",
+###   "updatedAt": "2024-01-01T00:00:00Z",
+###   "lastLoginAt": "2024-01-01T00:00:00Z"
+### }
+
+###
+
+### 2. GET /api/users/profile - Without authentication (should fail)
+GET {{baseUrl}}/api/users/profile
+Accept: application/json
+
+### Expected Response (401 Unauthorized)
+
+###
+
+### 3. PUT /api/users/profile - Update user profile
+PUT {{baseUrl}}/api/users/profile
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "firstName": "Updated",
+  "lastName": "Profile",
+  "email": "testprofile@example.com",
+  "phoneNumber": "+1234567890"
+}
+
+### Expected Response (200 OK):
+### {
+###   "id": "user-guid",
+###   "userName": "profileuser",
+###   "email": "testprofile@example.com",
+###   "emailConfirmed": true,
+###   "firstName": "Updated",
+###   "lastName": "Profile",
+###   "phoneNumber": "+1234567890",
+###   "role": "User",
+###   "isActive": true,
+###   "createdAt": "2024-01-01T00:00:00Z",
+###   "updatedAt": "2024-01-01T00:00:01Z",
+###   "lastLoginAt": "2024-01-01T00:00:00Z"
+### }
+
+###
+
+### 4. PUT /api/users/profile - Update with new email (requires verification)
+PUT {{baseUrl}}/api/users/profile
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "firstName": "Updated",
+  "lastName": "Profile",
+  "email": "newemail@example.com",
+  "phoneNumber": "+1234567890"
+}
+
+### Expected Response (200 OK):
+### Note: emailConfirmed will be false since email changed
+### {
+###   "id": "user-guid",
+###   "userName": "profileuser",
+###   "email": "newemail@example.com",
+###   "emailConfirmed": false,
+###   "firstName": "Updated",
+###   "lastName": "Profile",
+###   "phoneNumber": "+1234567890",
+###   "role": "User",
+###   "isActive": true,
+###   "createdAt": "2024-01-01T00:00:00Z",
+###   "updatedAt": "2024-01-01T00:00:01Z",
+###   "lastLoginAt": "2024-01-01T00:00:00Z"
+### }
+
+###
+
+### 5. PUT /api/users/profile - Invalid data (missing required fields)
+PUT {{baseUrl}}/api/users/profile
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "firstName": "",
+  "lastName": "Profile",
+  "email": "invalid-email"
+}
+
+### Expected Response (400 Bad Request):
+### Validation errors
+
+###
+
+### 6. PUT /api/users/change-password - Change password with valid credentials
+PUT {{baseUrl}}/api/users/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "{{password}}",
+  "newPassword": "NewPass123!",
+  "confirmPassword": "NewPass123!"
+}
+
+### Expected Response (200 OK):
+### {
+###   "message": "Password changed successfully"
+### }
+
+###
+
+### 7. PUT /api/users/change-password - Invalid current password
+PUT {{baseUrl}}/api/users/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "WrongPassword123!",
+  "newPassword": "NewPass123!",
+  "confirmPassword": "NewPass123!"
+}
+
+### Expected Response (400 Bad Request):
+### {
+###   "message": "Current password is incorrect"
+### }
+
+###
+
+### 8. PUT /api/users/change-password - Passwords don't match
+PUT {{baseUrl}}/api/users/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "{{password}}",
+  "newPassword": "NewPass123!",
+  "confirmPassword": "DifferentPass123!"
+}
+
+### Expected Response (400 Bad Request):
+### Validation errors
+
+###
+
+### 9. PUT /api/users/change-password - Weak password
+PUT {{baseUrl}}/api/users/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "{{password}}",
+  "newPassword": "weak",
+  "confirmPassword": "weak"
+}
+
+### Expected Response (400 Bad Request):
+### Password validation errors
+
+###
+
+### 10. DELETE /api/users/account - Delete user account (soft delete)
+DELETE {{baseUrl}}/api/users/account
+Authorization: Bearer {{accessToken}}
+
+### Expected Response (200 OK):
+### {
+###   "message": "Account has been deleted successfully"
+### }
+### 
+### Note: This is a soft delete. The account will be marked as inactive
+### but data is preserved for integrity
+
+###
+
+### 11. DELETE /api/users/account - Without authentication (should fail)
+DELETE {{baseUrl}}/api/users/account
+
+### Expected Response (401 Unauthorized)
+
+###
+
+### 12. Verify account is inactive after deletion (should fail)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "rememberMe": false
+}
+
+### Expected Response (401 Unauthorized):
+### {
+###   "message": "Account is not active"
+### }
+
+###
