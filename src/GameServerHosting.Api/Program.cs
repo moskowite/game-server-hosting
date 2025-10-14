@@ -40,6 +40,9 @@ try
     var jwtSettings = builder.Configuration.GetSection("JwtSettings");
     builder.Services.Configure<JwtSettings>(jwtSettings);
     
+    // Configure Email Settings
+    builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+    
     var jwtSecretKey = jwtSettings.GetValue<string>("SecretKey") ?? throw new InvalidOperationException("JWT SecretKey is not configured");
     var jwtIssuer = jwtSettings.GetValue<string>("Issuer") ?? "GameServerHosting.Api";
     var jwtAudience = jwtSettings.GetValue<string>("Audience") ?? "GameServerHosting.Client";
@@ -65,7 +68,7 @@ try
         options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
 
         // Sign-in settings
-        options.SignIn.RequireConfirmedEmail = false; // Can be set to true when email service is implemented
+        options.SignIn.RequireConfirmedEmail = true; // Email verification is now required
         options.SignIn.RequireConfirmedPhoneNumber = false;
         options.SignIn.RequireConfirmedAccount = false;
     })

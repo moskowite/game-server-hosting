@@ -99,30 +99,32 @@ public class AuthController : ControllerBase
 
             _logger.LogInformation("New user registered: {UserId} ({Email})", user.Id, user.Email);
 
-            // Generate tokens
-            var accessToken = _jwtTokenService.GenerateAccessToken(user);
-            var refreshToken = _jwtTokenService.GenerateRefreshToken();
+            // Generate email verification token
+            var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
-            // Store refresh token (expires in 7 days)
-            _refreshTokens[refreshToken] = new RefreshTokenData
+            // Send verification email
+            try
             {
-                UserId = user.Id,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
-            };
-
-            var response = new AuthResponse
+                await _emailService.SendEmailVerificationAsync(
+                    user.Email ?? string.Empty,
+                    emailToken,
+                    user.UserName ?? string.Empty
+                );
+                _logger.LogInformation("Verification email sent to {Email}", user.Email);
+            }
+            catch (Exception ex)
             {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken,
-                TokenType = "Bearer",
-                ExpiresIn = _jwtSettings.ExpirationInMinutes * 60,
-                UserId = user.Id,
-                UserName = user.UserName ?? string.Empty,
-                Email = user.Email ?? string.Empty,
-                Role = user.Role.ToString()
-            };
+                _logger.LogError(ex, "Failed to send verification email to {Email}", user.Email);
+                // Don't fail registration if email sending fails
+            }
 
-            return Ok(response);
+            // Return success message without tokens (user must verify email first)
+            return Ok(new
+            {
+                message = "Registration successful! Please check your email to verify your account.",
+                email = user.Email,
+                requiresEmailVerification = true
+            });
         }
         catch (Exception ex)
         {
@@ -157,6 +159,13 @@ public class AuthController : ControllerBase
             {
                 _logger.LogWarning("Login attempt for inactive account: {UserId}", user.Id);
                 return Unauthorized(new { message = "Account is not active" });
+            }
+
+            // Check if email is confirmed
+            if (!user.EmailConfirmed)
+            {
+                _logger.LogWarning("Login attempt with unverified email: {UserId}", user.Id);
+                return Unauthorized(new { message = "Please verify your email address before logging in. Check your inbox for the verification link." });
             }
 
             // Verify password
@@ -448,6 +457,106 @@ public class AuthController : ControllerBase
         {
             _logger.LogError(ex, "Error during password reset for {Email}", request.Email);
             return StatusCode(500, new { message = "An error occurred during password reset" });
+        }
+    }
+
+    /// <summary>
+    /// Verify email address using verification token
+    /// </summary>
+    /// <param name="request">Email verification request</param>
+    /// <returns>Success message</returns>
+    [HttpPost("verify-email")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
+    {
+        try
+        {
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+            {
+                _logger.LogWarning("Email verification attempted for non-existent user: {Email}", request.Email);
+                return BadRequest(new { message = "Invalid verification request" });
+            }
+
+            if (user.EmailConfirmed)
+            {
+                _logger.LogInformation("Email already verified for user: {UserId}", user.Id);
+                return Ok(new { message = "Email is already verified. You can now log in." });
+            }
+
+            // Confirm email using the token
+            var result = await _userManager.ConfirmEmailAsync(user, request.Token);
+
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                _logger.LogWarning("Email verification failed for {Email}: {Errors}", request.Email, errors);
+                return BadRequest(new { message = "Email verification failed. The link may have expired.", errors = result.Errors });
+            }
+
+            // Update timestamp
+            user.UpdatedAt = DateTime.UtcNow;
+            await _userManager.UpdateAsync(user);
+
+            _logger.LogInformation("Email verified successfully for user {UserId}", user.Id);
+
+            return Ok(new { message = "Email verified successfully! You can now log in." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during email verification for {Email}", request.Email);
+            return StatusCode(500, new { message = "An error occurred during email verification" });
+        }
+    }
+
+    /// <summary>
+    /// Resend email verification link
+    /// </summary>
+    /// <param name="request">Resend verification email request</param>
+    /// <returns>Success message</returns>
+    [HttpPost("resend-verification-email")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult> ResendVerificationEmail([FromBody] ResendVerificationEmailRequest request)
+    {
+        try
+        {
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            
+            // Always return success to prevent email enumeration
+            if (user == null || !user.IsActive)
+            {
+                _logger.LogWarning("Verification email resend requested for non-existent or inactive user: {Email}", request.Email);
+                return Ok(new { message = "If the email exists in our system and is not yet verified, a verification link has been sent." });
+            }
+
+            if (user.EmailConfirmed)
+            {
+                _logger.LogInformation("Verification email resend requested for already verified user: {UserId}", user.Id);
+                return Ok(new { message = "This email address is already verified. You can log in." });
+            }
+
+            // Generate new email verification token
+            var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+            // Send verification email
+            await _emailService.SendEmailVerificationAsync(
+                user.Email ?? string.Empty,
+                emailToken,
+                user.UserName ?? string.Empty
+            );
+
+            _logger.LogInformation("Verification email resent to {Email}", request.Email);
+
+            return Ok(new { message = "If the email exists in our system and is not yet verified, a verification link has been sent." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during resending verification email for {Email}", request.Email);
+            return StatusCode(500, new { message = "An error occurred processing your request" });
         }
     }
 }
