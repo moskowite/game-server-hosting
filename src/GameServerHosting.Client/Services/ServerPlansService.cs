@@ -46,4 +46,26 @@ public class ServerPlansService
             return null;
         }
     }
+
+    public async Task<List<ServerPlanDto>?> GetAllServerPlansAsync(bool? isActive = null)
+    {
+        try
+        {
+            var queryParams = new List<string>();
+            if (isActive.HasValue)
+            {
+                queryParams.Add($"isActive={isActive.Value}");
+            }
+
+            var queryString = queryParams.Count > 0 ? "?" + string.Join("&", queryParams) : "";
+            var url = $"api/server-plans{queryString}";
+
+            return await _httpClient.GetFromJsonAsync<List<ServerPlanDto>>(url);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching all server plans: {ex.Message}");
+            return null;
+        }
+    }
 }
