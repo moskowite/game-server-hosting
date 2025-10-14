@@ -1,0 +1,203 @@
+@using GameServerHosting.Client.Models
+@using GameServerHosting.Client.Services
+@inject CheckoutService CheckoutService
+
+<link href="Pages/CheckoutSteps.css" rel="stylesheet" />
+
+<div class="checkout-step">
+    <div class="step-header">
+        <h2 class="step-title">
+            <span class="bi bi-receipt"></span>
+            Billing Information
+        </h2>
+        <p class="step-description">Enter your billing details for the invoice</p>
+    </div>
+
+    <div class="billing-form">
+        <div class="form-section">
+            <h4 class="section-title">
+                <span class="bi bi-person"></span>
+                Personal Information
+            </h4>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label required">First Name</label>
+                    <input type="text" 
+                           class="form-control" 
+                           placeholder="John"
+                           @bind="billingDetails.FirstName"
+                           @bind:after="UpdateBillingDetails" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required">Last Name</label>
+                    <input type="text" 
+                           class="form-control" 
+                           placeholder="Doe"
+                           @bind="billingDetails.LastName"
+                           @bind:after="UpdateBillingDetails" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label required">Email Address</label>
+                <input type="email" 
+                       class="form-control" 
+                       placeholder="john.doe@example.com"
+                       @bind="billingDetails.Email"
+                       @bind:after="UpdateBillingDetails" />
+                <small class="form-text">We'll send your invoice and server details to this email</small>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Company (Optional)</label>
+                    <input type="text" 
+                           class="form-control" 
+                           placeholder="Company Name"
+                           @bind="billingDetails.Company"
+                           @bind:after="UpdateBillingDetails" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tax ID / VAT (Optional)</label>
+                    <input type="text" 
+                           class="form-control" 
+                           placeholder="Tax ID or VAT Number"
+                           @bind="billingDetails.TaxId"
+                           @bind:after="UpdateBillingDetails" />
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h4 class="section-title">
+                <span class="bi bi-geo-alt"></span>
+                Billing Address
+            </h4>
+
+            <div class="form-group">
+                <label class="form-label required">Street Address</label>
+                <input type="text" 
+                       class="form-control" 
+                       placeholder="123 Main Street"
+                       @bind="billingDetails.Address"
+                       @bind:after="UpdateBillingDetails" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Address Line 2 (Optional)</label>
+                <input type="text" 
+                       class="form-control" 
+                       placeholder="Apartment, suite, unit, etc."
+                       @bind="billingDetails.Address2"
+                       @bind:after="UpdateBillingDetails" />
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label required">City</label>
+                    <input type="text" 
+                           class="form-control" 
+                           placeholder="New York"
+                           @bind="billingDetails.City"
+                           @bind:after="UpdateBillingDetails" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required">State / Province</label>
+                    <input type="text" 
+                           class="form-control" 
+                           placeholder="NY"
+                           @bind="billingDetails.State"
+                           @bind:after="UpdateBillingDetails" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label required">ZIP / Postal Code</label>
+                    <input type="text" 
+                           class="form-control" 
+                           placeholder="10001"
+                           @bind="billingDetails.ZipCode"
+                           @bind:after="UpdateBillingDetails" />
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required">Country</label>
+                    <select class="form-select" 
+                            @bind="billingDetails.Country"
+                            @bind:after="UpdateBillingDetails">
+                        <option value="United States">United States</option>
+                        <option value="Canada">Canada</option>
+                        <option value="United Kingdom">United Kingdom</option>
+                        <option value="Germany">Germany</option>
+                        <option value="France">France</option>
+                        <option value="Australia">Australia</option>
+                        <option value="Japan">Japan</option>
+                        <option value="Singapore">Singapore</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Phone Number (Optional)</label>
+                <input type="tel" 
+                       class="form-control" 
+                       placeholder="+1 (555) 123-4567"
+                       @bind="billingDetails.Phone"
+                       @bind:after="UpdateBillingDetails" />
+            </div>
+        </div>
+
+        <div class="billing-status">
+            @if (IsFormValid())
+            {
+                <div class="status-message success">
+                    <span class="bi bi-check-circle-fill"></span>
+                    <span>Billing information complete</span>
+                </div>
+            }
+            else
+            {
+                <div class="status-message warning">
+                    <span class="bi bi-exclamation-circle-fill"></span>
+                    <span>Please complete all required fields</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private BillingDetails billingDetails = new();
+
+    protected override void OnInitialized()
+    {
+        if (CheckoutService.State.BillingDetails != null)
+        {
+            billingDetails = CheckoutService.State.BillingDetails;
+        }
+    }
+
+    private void UpdateBillingDetails()
+    {
+        CheckoutService.UpdateBillingDetails(billingDetails);
+    }
+
+    private bool IsFormValid()
+    {
+        return !string.IsNullOrWhiteSpace(billingDetails.FirstName) &&
+               !string.IsNullOrWhiteSpace(billingDetails.LastName) &&
+               !string.IsNullOrWhiteSpace(billingDetails.Email) &&
+               billingDetails.Email.Contains("@") &&
+               !string.IsNullOrWhiteSpace(billingDetails.Address) &&
+               !string.IsNullOrWhiteSpace(billingDetails.City) &&
+               !string.IsNullOrWhiteSpace(billingDetails.State) &&
+               !string.IsNullOrWhiteSpace(billingDetails.ZipCode) &&
+               !string.IsNullOrWhiteSpace(billingDetails.Country);
+    }
+}

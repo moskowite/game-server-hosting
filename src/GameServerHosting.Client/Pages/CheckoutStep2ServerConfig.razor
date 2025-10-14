@@ -1,0 +1,219 @@
+@using GameServerHosting.Client.Models
+@using GameServerHosting.Client.Services
+@using System.ComponentModel.DataAnnotations
+@inject CheckoutService CheckoutService
+
+<link href="Pages/CheckoutSteps.css" rel="stylesheet" />
+
+<div class="checkout-step">
+    <div class="step-header">
+        <h2 class="step-title">
+            <span class="bi bi-gear-fill"></span>
+            Configure Your Servers
+        </h2>
+        <p class="step-description">Set up each server with a name, region, and settings</p>
+    </div>
+
+    <div class="server-configs">
+        @foreach (var item in CheckoutService.State.CartItems)
+        {
+            var config = GetOrCreateConfig(item.Id);
+            var index = CheckoutService.State.CartItems.IndexOf(item);
+            
+            <div class="config-card">
+                <div class="config-header">
+                    <div class="config-icon">
+                        <span class="bi @GetServerIcon(item.ServerPlan?.Name ?? "")"></span>
+                    </div>
+                    <div class="config-info">
+                        <h4>@item.ServerPlan?.Name</h4>
+                        @if (item.Quantity > 1)
+                        {
+                            <p class="config-note">You're purchasing @item.Quantity of these servers. Configure the first one here.</p>
+                        }
+                    </div>
+                </div>
+
+                <div class="config-form">
+                    <div class="form-group">
+                        <label class="form-label required">
+                            <span class="bi bi-tag"></span>
+                            Server Name
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               placeholder="e.g., My Awesome Server"
+                               @bind="config.ServerName"
+                               @bind:after="() => UpdateConfig(item.Id, config)"
+                               maxlength="50" />
+                        <small class="form-text">Give your server a unique name (3-50 characters)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label required">
+                            <span class="bi bi-geo-alt"></span>
+                            Server Region
+                        </label>
+                        <select class="form-select" 
+                                @bind="config.Region"
+                                @bind:after="() => UpdateConfig(item.Id, config)">
+                            <option value="">Select a region...</option>
+                            <option value="us-east">US East (New York)</option>
+                            <option value="us-west">US West (Los Angeles)</option>
+                            <option value="us-central">US Central (Chicago)</option>
+                            <option value="eu-west">EU West (London)</option>
+                            <option value="eu-central">EU Central (Frankfurt)</option>
+                            <option value="asia-pacific">Asia Pacific (Singapore)</option>
+                            <option value="asia-east">Asia East (Tokyo)</option>
+                        </select>
+                        <small class="form-text">Choose the region closest to your players for best performance</small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="bi bi-people"></span>
+                                Max Players
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   @bind="config.MaxPlayers"
+                                   @bind:after="() => UpdateConfig(item.Id, config)"
+                                   min="1" 
+                                   max="1000" />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <span class="bi bi-shield-lock"></span>
+                                Server Password (Optional)
+                            </label>
+                            <input type="password" 
+                                   class="form-control" 
+                                   placeholder="Leave empty for no password"
+                                   @bind="config.Password"
+                                   @bind:after="() => UpdateConfig(item.Id, config)" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <span class="bi bi-file-text"></span>
+                            Description (Optional)
+                        </label>
+                        <textarea class="form-control" 
+                                  rows="3" 
+                                  placeholder="Add a description for your server..."
+                                  @bind="config.Description"
+                                  @bind:after="() => UpdateConfig(item.Id, config)"></textarea>
+                    </div>
+
+                    <div class="server-options">
+                        <h5 class="options-title">Server Options</h5>
+                        
+                        <div class="option-toggle">
+                            <input type="checkbox" 
+                                   id="public-@index" 
+                                   @bind="config.IsPublic"
+                                   @bind:after="() => UpdateConfig(item.Id, config)" />
+                            <label for="public-@index">
+                                <span class="bi bi-globe"></span>
+                                <span>Public Server</span>
+                                <small>Make your server visible in server browser</small>
+                            </label>
+                        </div>
+
+                        <div class="option-toggle">
+                            <input type="checkbox" 
+                                   id="autostart-@index" 
+                                   @bind="config.AutoStart"
+                                   @bind:after="() => UpdateConfig(item.Id, config)" />
+                            <label for="autostart-@index">
+                                <span class="bi bi-play-circle"></span>
+                                <span>Auto-Start</span>
+                                <small>Automatically start server after deployment</small>
+                            </label>
+                        </div>
+
+                        <div class="option-toggle">
+                            <input type="checkbox" 
+                                   id="autoupdate-@index" 
+                                   @bind="config.AutoUpdate"
+                                   @bind:after="() => UpdateConfig(item.Id, config)" />
+                            <label for="autoupdate-@index">
+                                <span class="bi bi-arrow-repeat"></span>
+                                <span>Auto-Update</span>
+                                <small>Keep server software up to date automatically</small>
+                            </label>
+                        </div>
+
+                        <div class="option-toggle">
+                            <input type="checkbox" 
+                                   id="backup-@index" 
+                                   @bind="config.BackupEnabled"
+                                   @bind:after="() => UpdateConfig(item.Id, config)" />
+                            <label for="backup-@index">
+                                <span class="bi bi-cloud-upload"></span>
+                                <span>Enable Backups</span>
+                                <small>Automatically backup server data every @config.BackupFrequencyHours hours</small>
+                            </label>
+                        </div>
+                    </div>
+
+                    @if (IsConfigValid(config))
+                    {
+                        <div class="config-status success">
+                            <span class="bi bi-check-circle-fill"></span>
+                            Configuration complete
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="config-status warning">
+                            <span class="bi bi-exclamation-circle-fill"></span>
+                            Please complete required fields
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private ServerConfiguration GetOrCreateConfig(Guid cartItemId)
+    {
+        if (!CheckoutService.State.ServerConfigurations.ContainsKey(cartItemId))
+        {
+            CheckoutService.State.ServerConfigurations[cartItemId] = new ServerConfiguration
+            {
+                CartItemId = cartItemId
+            };
+        }
+        return CheckoutService.State.ServerConfigurations[cartItemId];
+    }
+
+    private void UpdateConfig(Guid cartItemId, ServerConfiguration config)
+    {
+        CheckoutService.UpdateServerConfiguration(cartItemId, config);
+    }
+
+    private bool IsConfigValid(ServerConfiguration config)
+    {
+        return !string.IsNullOrWhiteSpace(config.ServerName) &&
+               config.ServerName.Length >= 3 &&
+               !string.IsNullOrWhiteSpace(config.Region);
+    }
+
+    private string GetServerIcon(string planName)
+    {
+        var lowerName = planName.ToLower();
+        if (lowerName.Contains("minecraft")) return "bi-square-fill";
+        if (lowerName.Contains("rust")) return "bi-hammer";
+        if (lowerName.Contains("ark")) return "bi-egg";
+        if (lowerName.Contains("valheim")) return "bi-shield-fill";
+        if (lowerName.Contains("terraria")) return "bi-tree-fill";
+        if (lowerName.Contains("counter") || lowerName.Contains("cs:go")) return "bi-crosshair";
+        return "bi-server";
+    }
+}

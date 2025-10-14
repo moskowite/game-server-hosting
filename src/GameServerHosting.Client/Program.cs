@@ -23,5 +23,6 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ServerCatalogService>();
 builder.Services.AddScoped<ServerPlansService>();
 builder.Services.AddScoped<CartService>();
+builder.Services.AddScoped<CheckoutService>();
 
 await builder.Build().RunAsync();

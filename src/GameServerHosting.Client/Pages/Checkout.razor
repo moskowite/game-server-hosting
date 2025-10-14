@@ -1,0 +1,337 @@
+@page "/checkout"
+@using GameServerHosting.Client.Models
+@using GameServerHosting.Client.Services
+@inject CheckoutService CheckoutService
+@inject CartService CartService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<PageTitle>Checkout - @GetStepTitle()</PageTitle>
+
+<div class="checkout-container">
+    <!-- Progress Indicator -->
+    <div class="checkout-progress">
+        <div class="progress-steps">
+            <div class="progress-step @(currentStep >= 1 ? "active" : "") @(currentStep > 1 ? "completed" : "")" @onclick="() => GoToStep(1)">
+                <div class="step-circle">
+                    @if (currentStep > 1)
+                    {
+                        <span class="bi bi-check-lg"></span>
+                    }
+                    else
+                    {
+                        <span>1</span>
+                    }
+                </div>
+                <div class="step-label">Review Cart</div>
+            </div>
+            <div class="progress-line @(currentStep > 1 ? "completed" : "")"></div>
+            
+            <div class="progress-step @(currentStep >= 2 ? "active" : "") @(currentStep > 2 ? "completed" : "")" @onclick="() => GoToStep(2)">
+                <div class="step-circle">
+                    @if (currentStep > 2)
+                    {
+                        <span class="bi bi-check-lg"></span>
+                    }
+                    else
+                    {
+                        <span>2</span>
+                    }
+                </div>
+                <div class="step-label">Server Config</div>
+            </div>
+            <div class="progress-line @(currentStep > 2 ? "completed" : "")"></div>
+            
+            <div class="progress-step @(currentStep >= 3 ? "active" : "") @(currentStep > 3 ? "completed" : "")" @onclick="() => GoToStep(3)">
+                <div class="step-circle">
+                    @if (currentStep > 3)
+                    {
+                        <span class="bi bi-check-lg"></span>
+                    }
+                    else
+                    {
+                        <span>3</span>
+                    }
+                </div>
+                <div class="step-label">Billing Info</div>
+            </div>
+            <div class="progress-line @(currentStep > 3 ? "completed" : "")"></div>
+            
+            <div class="progress-step @(currentStep >= 4 ? "active" : "") @(currentStep > 4 ? "completed" : "")" @onclick="() => GoToStep(4)">
+                <div class="step-circle">
+                    @if (currentStep > 4)
+                    {
+                        <span class="bi bi-check-lg"></span>
+                    }
+                    else
+                    {
+                        <span>4</span>
+                    }
+                </div>
+                <div class="step-label">Payment</div>
+            </div>
+            <div class="progress-line @(currentStep > 4 ? "completed" : "")"></div>
+            
+            <div class="progress-step @(currentStep >= 5 ? "active" : "") @(currentStep > 5 ? "completed" : "")">
+                <div class="step-circle">
+                    @if (currentStep > 5)
+                    {
+                        <span class="bi bi-check-lg"></span>
+                    }
+                    else
+                    {
+                        <span>5</span>
+                    }
+                </div>
+                <div class="step-label">Confirmation</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step Content -->
+    <div class="checkout-content">
+        @if (isLoading)
+        {
+            <div class="loading-container">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="loading-text">Loading checkout...</p>
+            </div>
+        }
+        else if (!CheckoutService.State.CartItems.Any() && currentStep == 1)
+        {
+            <div class="empty-cart-message">
+                <span class="bi bi-cart-x"></span>
+                <h3>Your cart is empty</h3>
+                <p>Add items to your cart before checking out</p>
+                <button class="btn btn-primary" @onclick="NavigateToServers">
+                    <span class="bi bi-server"></span>
+                    Browse Servers
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="step-container">
+                @switch (currentStep)
+                {
+                    case 1:
+                        <CheckoutStep1ReviewCart />
+                        break;
+                    case 2:
+                        <CheckoutStep2ServerConfig />
+                        break;
+                    case 3:
+                        <CheckoutStep3BillingInfo />
+                        break;
+                    case 4:
+                        <CheckoutStep4Payment />
+                        break;
+                    case 5:
+                        <CheckoutStep5Confirmation />
+                        break;
+                }
+            </div>
+
+            <!-- Navigation Buttons -->
+            @if (currentStep < 5)
+            {
+                <div class="checkout-navigation">
+                    @if (currentStep > 1)
+                    {
+                        <button class="btn btn-outline-secondary btn-nav" @onclick="PreviousStep">
+                            <span class="bi bi-arrow-left"></span>
+                            Back
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-outline-secondary btn-nav" @onclick="NavigateToCart">
+                            <span class="bi bi-arrow-left"></span>
+                            Back to Cart
+                        </button>
+                    }
+
+                    <div class="nav-spacer"></div>
+
+                    @if (currentStep < 4)
+                    {
+                        <button class="btn btn-primary btn-nav" 
+                                @onclick="NextStep"
+                                disabled="@(!CheckoutService.State.CanProceedToNextStep())">
+                            Continue
+                            <span class="bi bi-arrow-right"></span>
+                        </button>
+                    }
+                    else if (currentStep == 4)
+                    {
+                        <button class="btn btn-success btn-nav btn-pay" 
+                                @onclick="ProcessPayment"
+                                disabled="@(!CheckoutService.State.CanProceedToNextStep() || isProcessingPayment)">
+                            @if (isProcessingPayment)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Processing...</span>
+                            }
+                            else
+                            {
+                                <span class="bi bi-lock-fill"></span>
+                                <span>Complete Payment ($@CheckoutService.State.Total.ToString("F2"))</span>
+                            }
+                        </button>
+                    }
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Order Summary Sidebar -->
+    @if (!isLoading && CheckoutService.State.CartItems.Any() && currentStep < 5)
+    {
+        <div class="order-summary">
+            <h3 class="summary-title">Order Summary</h3>
+            
+            <div class="summary-items">
+                @foreach (var item in CheckoutService.State.CartItems)
+                {
+                    <div class="summary-item">
+                        <div class="item-info">
+                            <div class="item-name">@item.ServerPlan?.Name</div>
+                            <div class="item-qty">Qty: @item.Quantity</div>
+                        </div>
+                        <div class="item-price">$@((item.Price * item.Quantity).ToString("F2"))</div>
+                    </div>
+                }
+            </div>
+
+            <div class="summary-divider"></div>
+
+            <div class="summary-totals">
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span>$@CheckoutService.State.Subtotal.ToString("F2")</span>
+                </div>
+                
+                @if (CheckoutService.State.Discount > 0)
+                {
+                    <div class="summary-row discount">
+                        <span>
+                            <span class="bi bi-tag"></span>
+                            Discount
+                        </span>
+                        <span>-$@CheckoutService.State.Discount.ToString("F2")</span>
+                    </div>
+                }
+
+                <div class="summary-row">
+                    <span>Tax</span>
+                    <span>$@CheckoutService.State.Tax.ToString("F2")</span>
+                </div>
+
+                <div class="summary-divider"></div>
+
+                <div class="summary-row total">
+                    <span>Total</span>
+                    <span>$@CheckoutService.State.Total.ToString("F2")</span>
+                </div>
+            </div>
+
+            <div class="security-badge">
+                <span class="bi bi-shield-check"></span>
+                Secure Checkout - SSL Encrypted
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private int currentStep = 1;
+    private bool isLoading = true;
+    private bool isProcessingPayment = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CheckoutService.OnCheckoutStateChanged += OnStateChanged;
+        
+        await CheckoutService.InitializeAsync();
+        
+        if (!CheckoutService.State.CartItems.Any())
+        {
+            // If cart is empty, stay on step 1 to show empty message
+            currentStep = 1;
+        }
+        else
+        {
+            currentStep = CheckoutService.State.CurrentStep;
+        }
+        
+        isLoading = false;
+    }
+
+    private void OnStateChanged(CheckoutState state)
+    {
+        currentStep = state.CurrentStep;
+        StateHasChanged();
+    }
+
+    private void NextStep()
+    {
+        CheckoutService.NextStep();
+    }
+
+    private void PreviousStep()
+    {
+        CheckoutService.PreviousStep();
+    }
+
+    private void GoToStep(int step)
+    {
+        // Only allow going back or to completed steps
+        if (step < currentStep)
+        {
+            CheckoutService.GoToStep(step);
+        }
+    }
+
+    private async Task ProcessPayment()
+    {
+        isProcessingPayment = true;
+        var success = await CheckoutService.ProcessPaymentAsync();
+        isProcessingPayment = false;
+        
+        if (!success)
+        {
+            // TODO: Show error message
+            Console.WriteLine("Payment failed");
+        }
+    }
+
+    private void NavigateToCart()
+    {
+        NavigationManager.NavigateTo("/cart");
+    }
+
+    private void NavigateToServers()
+    {
+        NavigationManager.NavigateTo("/servers");
+    }
+
+    private string GetStepTitle()
+    {
+        return currentStep switch
+        {
+            1 => "Review Cart",
+            2 => "Server Configuration",
+            3 => "Billing Information",
+            4 => "Payment",
+            5 => "Confirmation",
+            _ => "Checkout"
+        };
+    }
+
+    public void Dispose()
+    {
+        CheckoutService.OnCheckoutStateChanged -= OnStateChanged;
+    }
+}
