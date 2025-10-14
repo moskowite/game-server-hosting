@@ -27,16 +27,12 @@
                     
                     <div class="item-specs">
                         <div class="spec-item">
-                            <span class="bi bi-hdd"></span>
-                            <span>@item.ServerPlan?.DiskSpaceGB GB Storage</span>
+                            <span class="bi bi-tag"></span>
+                            <span>@item.ServerPlan?.Name</span>
                         </div>
                         <div class="spec-item">
-                            <span class="bi bi-memory"></span>
-                            <span>@item.ServerPlan?.RamGB GB RAM</span>
-                        </div>
-                        <div class="spec-item">
-                            <span class="bi bi-cpu"></span>
-                            <span>@item.ServerPlan?.CpuCores vCPU Cores</span>
+                            <span class="bi bi-currency-dollar"></span>
+                            <span>$@item.ServerPlan?.Price.ToString("F2")</span>
                         </div>
                         <div class="spec-item">
                             <span class="bi bi-clock"></span>
