@@ -20,6 +20,7 @@ public class GameServerDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<GameServer> GameServers { get; set; } = null!;
     public DbSet<Order> Orders { get; set; } = null!;
     public DbSet<Payment> Payments { get; set; } = null!;
+    public DbSet<UserPreferences> UserPreferences { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -102,6 +103,87 @@ public class GameServerDbContext : IdentityDbContext<ApplicationUser, IdentityRo
                 .WithOne(e => e.User)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ===== UserPreferences Configuration =====
+        modelBuilder.Entity<UserPreferences>(entity =>
+        {
+            entity.ToTable("user_preferences");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Id)
+                .HasColumnName("id")
+                .HasDefaultValueSql("uuid_generate_v4()");
+            
+            entity.Property(e => e.UserId)
+                .HasColumnName("user_id")
+                .IsRequired();
+            
+            entity.Property(e => e.EmailPromotional)
+                .HasColumnName("email_promotional")
+                .HasDefaultValue(true)
+                .IsRequired();
+            
+            entity.Property(e => e.EmailOrderUpdates)
+                .HasColumnName("email_order_updates")
+                .HasDefaultValue(true)
+                .IsRequired();
+            
+            entity.Property(e => e.EmailServerAlerts)
+                .HasColumnName("email_server_alerts")
+                .HasDefaultValue(true)
+                .IsRequired();
+            
+            entity.Property(e => e.EmailNewsletter)
+                .HasColumnName("email_newsletter")
+                .HasDefaultValue(true)
+                .IsRequired();
+            
+            entity.Property(e => e.NotificationsBrowser)
+                .HasColumnName("notifications_browser")
+                .HasDefaultValue(true)
+                .IsRequired();
+            
+            entity.Property(e => e.NotificationsServerOffline)
+                .HasColumnName("notifications_server_offline")
+                .HasDefaultValue(true)
+                .IsRequired();
+            
+            entity.Property(e => e.NotificationsResourceAlerts)
+                .HasColumnName("notifications_resource_alerts")
+                .HasDefaultValue(true)
+                .IsRequired();
+            
+            entity.Property(e => e.NotificationsPaymentDue)
+                .HasColumnName("notifications_payment_due")
+                .HasDefaultValue(true)
+                .IsRequired();
+            
+            entity.Property(e => e.NotificationsSecurityAlerts)
+                .HasColumnName("notifications_security_alerts")
+                .HasDefaultValue(true)
+                .IsRequired();
+            
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .IsRequired();
+            
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("updated_at")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .IsRequired();
+            
+            // Indexes
+            entity.HasIndex(e => e.UserId)
+                .IsUnique()
+                .HasDatabaseName("idx_user_preferences_user_id");
+            
+            // Relationships
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Configure other Identity tables

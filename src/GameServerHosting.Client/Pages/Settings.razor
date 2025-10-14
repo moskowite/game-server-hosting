@@ -1,0 +1,571 @@
+@page "/settings"
+@using GameServerHosting.Client.Models
+@inject UserService UserService
+
+<PageTitle>Settings - Game Server Hosting</PageTitle>
+
+<div class="settings-container">
+    @if (isLoading)
+    {
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading your settings...</p>
+        </div>
+    }
+    else
+    {
+        <!-- Header -->
+        <div class="settings-header">
+            <h1><i class="bi bi-gear-fill"></i> Account Settings</h1>
+            <p class="text-muted">Manage your profile, security, and preferences</p>
+        </div>
+
+        <!-- Settings Navigation Tabs -->
+        <ul class="nav nav-tabs settings-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "profile" ? "active" : "")" 
+                        @onclick='@(() => SetActiveTab("profile"))' 
+                        type="button">
+                    <i class="bi bi-person-circle"></i> Profile
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "security" ? "active" : "")" 
+                        @onclick='@(() => SetActiveTab("security"))' 
+                        type="button">
+                    <i class="bi bi-shield-lock"></i> Security
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "email" ? "active" : "")" 
+                        @onclick='@(() => SetActiveTab("email"))' 
+                        type="button">
+                    <i class="bi bi-envelope"></i> Email Preferences
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(activeTab == "notifications" ? "active" : "")" 
+                        @onclick='@(() => SetActiveTab("notifications"))' 
+                        type="button">
+                    <i class="bi bi-bell"></i> Notifications
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content settings-content">
+            <!-- Profile Tab -->
+            @if (activeTab == "profile")
+            {
+                <div class="settings-section">
+                    <div class="section-header">
+                        <h3>Profile Information</h3>
+                        <p class="text-muted">Update your personal details</p>
+                    </div>
+
+                    @if (profileMessage != null)
+                    {
+                        <div class="alert @(profileMessageType == "success" ? "alert-success" : "alert-danger") alert-dismissible fade show" role="alert">
+                            @profileMessage
+                            <button type="button" class="btn-close" @onclick="() => profileMessage = null"></button>
+                        </div>
+                    }
+
+                    <EditForm Model="@profileRequest" OnValidSubmit="@HandleProfileUpdate">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="firstName" class="form-label">First Name</label>
+                                    <InputText id="firstName" class="form-control" @bind-Value="profileRequest.FirstName" />
+                                    <ValidationMessage For="@(() => profileRequest.FirstName)" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="lastName" class="form-label">Last Name</label>
+                                    <InputText id="lastName" class="form-control" @bind-Value="profileRequest.LastName" />
+                                    <ValidationMessage For="@(() => profileRequest.LastName)" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <InputText id="email" type="email" class="form-control" @bind-Value="profileRequest.Email" />
+                            <ValidationMessage For="@(() => profileRequest.Email)" />
+                            @if (userProfile != null && !userProfile.EmailConfirmed)
+                            {
+                                <div class="form-text text-warning">
+                                    <i class="bi bi-exclamation-triangle"></i> Your email is not verified. Please check your inbox.
+                                </div>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="phoneNumber" class="form-label">Phone Number (Optional)</label>
+                            <InputText id="phoneNumber" class="form-control" @bind-Value="profileRequest.PhoneNumber" placeholder="+1 (555) 123-4567" />
+                            <ValidationMessage For="@(() => profileRequest.PhoneNumber)" />
+                        </div>
+
+                        @if (userProfile != null)
+                        {
+                            <div class="profile-metadata">
+                                <div class="metadata-item">
+                                    <span class="label">Account Created:</span>
+                                    <span class="value">@userProfile.CreatedAt.ToString("MMMM dd, yyyy")</span>
+                                </div>
+                                <div class="metadata-item">
+                                    <span class="label">Last Updated:</span>
+                                    <span class="value">@userProfile.UpdatedAt.ToString("MMMM dd, yyyy")</span>
+                                </div>
+                                @if (userProfile.LastLoginAt.HasValue)
+                                {
+                                    <div class="metadata-item">
+                                        <span class="label">Last Login:</span>
+                                        <span class="value">@userProfile.LastLoginAt.Value.ToString("MMMM dd, yyyy HH:mm")</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" disabled="@isProfileSaving">
+                                @if (isProfileSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>Saving...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-save me-2"></i>
+                                    <span>Save Changes</span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            }
+
+            <!-- Security Tab -->
+            @if (activeTab == "security")
+            {
+                <div class="settings-section">
+                    <div class="section-header">
+                        <h3>Change Password</h3>
+                        <p class="text-muted">Update your password to keep your account secure</p>
+                    </div>
+
+                    @if (passwordMessage != null)
+                    {
+                        <div class="alert @(passwordMessageType == "success" ? "alert-success" : "alert-danger") alert-dismissible fade show" role="alert">
+                            @passwordMessage
+                            <button type="button" class="btn-close" @onclick="() => passwordMessage = null"></button>
+                        </div>
+                    }
+
+                    <EditForm Model="@passwordRequest" OnValidSubmit="@HandlePasswordChange">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="mb-3">
+                            <label for="currentPassword" class="form-label">Current Password</label>
+                            <InputText id="currentPassword" type="password" class="form-control" @bind-Value="passwordRequest.CurrentPassword" />
+                            <ValidationMessage For="@(() => passwordRequest.CurrentPassword)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">New Password</label>
+                            <InputText id="newPassword" type="password" class="form-control" @bind-Value="passwordRequest.NewPassword" />
+                            <ValidationMessage For="@(() => passwordRequest.NewPassword)" />
+                            <div class="form-text">
+                                Password must be at least 8 characters and contain uppercase, lowercase, digit, and special character.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                            <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="passwordRequest.ConfirmPassword" />
+                            <ValidationMessage For="@(() => passwordRequest.ConfirmPassword)" />
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" disabled="@isPasswordSaving">
+                                @if (isPasswordSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>Updating...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-shield-check me-2"></i>
+                                    <span>Change Password</span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+
+                    <div class="security-info mt-4">
+                        <div class="info-card">
+                            <i class="bi bi-info-circle-fill"></i>
+                            <div>
+                                <h5>Password Security Tips</h5>
+                                <ul>
+                                    <li>Use a unique password that you don't use elsewhere</li>
+                                    <li>Consider using a password manager</li>
+                                    <li>Change your password regularly</li>
+                                    <li>Never share your password with anyone</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Email Preferences Tab -->
+            @if (activeTab == "email")
+            {
+                <div class="settings-section">
+                    <div class="section-header">
+                        <h3>Email Preferences</h3>
+                        <p class="text-muted">Choose which emails you'd like to receive</p>
+                    </div>
+
+                    @if (preferencesMessage != null)
+                    {
+                        <div class="alert @(preferencesMessageType == "success" ? "alert-success" : "alert-danger") alert-dismissible fade show" role="alert">
+                            @preferencesMessage
+                            <button type="button" class="btn-close" @onclick="() => preferencesMessage = null"></button>
+                        </div>
+                    }
+
+                    @if (preferences != null)
+                    {
+                        <div class="preferences-list">
+                            <div class="preference-item">
+                                <div class="preference-info">
+                                    <div class="preference-icon">
+                                        <i class="bi bi-megaphone-fill"></i>
+                                    </div>
+                                    <div>
+                                        <h5>Promotional Emails</h5>
+                                        <p>Receive updates about new features, special offers, and promotions</p>
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" 
+                                           id="emailPromotional" 
+                                           @bind="preferences.EmailPromotional" 
+                                           @bind:after="SavePreferences">
+                                </div>
+                            </div>
+
+                            <div class="preference-item">
+                                <div class="preference-info">
+                                    <div class="preference-icon">
+                                        <i class="bi bi-receipt-cutoff"></i>
+                                    </div>
+                                    <div>
+                                        <h5>Order Updates</h5>
+                                        <p>Get notified about order confirmations, shipments, and delivery updates</p>
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" 
+                                           id="emailOrderUpdates" 
+                                           @bind="preferences.EmailOrderUpdates" 
+                                           @bind:after="SavePreferences">
+                                </div>
+                            </div>
+
+                            <div class="preference-item">
+                                <div class="preference-info">
+                                    <div class="preference-icon">
+                                        <i class="bi bi-server"></i>
+                                    </div>
+                                    <div>
+                                        <h5>Server Alerts</h5>
+                                        <p>Receive alerts about your game server status and issues</p>
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" 
+                                           id="emailServerAlerts" 
+                                           @bind="preferences.EmailServerAlerts" 
+                                           @bind:after="SavePreferences">
+                                </div>
+                            </div>
+
+                            <div class="preference-item">
+                                <div class="preference-info">
+                                    <div class="preference-icon">
+                                        <i class="bi bi-newspaper"></i>
+                                    </div>
+                                    <div>
+                                        <h5>Newsletter</h5>
+                                        <p>Stay informed with our monthly newsletter featuring tips and updates</p>
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" 
+                                           id="emailNewsletter" 
+                                           @bind="preferences.EmailNewsletter" 
+                                           @bind:after="SavePreferences">
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Notifications Tab -->
+            @if (activeTab == "notifications")
+            {
+                <div class="settings-section">
+                    <div class="section-header">
+                        <h3>Notification Settings</h3>
+                        <p class="text-muted">Manage how you receive notifications</p>
+                    </div>
+
+                    @if (preferencesMessage != null)
+                    {
+                        <div class="alert @(preferencesMessageType == "success" ? "alert-success" : "alert-danger") alert-dismissible fade show" role="alert">
+                            @preferencesMessage
+                            <button type="button" class="btn-close" @onclick="() => preferencesMessage = null"></button>
+                        </div>
+                    }
+
+                    @if (preferences != null)
+                    {
+                        <div class="preferences-list">
+                            <div class="preference-item">
+                                <div class="preference-info">
+                                    <div class="preference-icon">
+                                        <i class="bi bi-browser-chrome"></i>
+                                    </div>
+                                    <div>
+                                        <h5>Browser Notifications</h5>
+                                        <p>Enable push notifications in your browser</p>
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" 
+                                           id="notificationsBrowser" 
+                                           @bind="preferences.NotificationsBrowser" 
+                                           @bind:after="SavePreferences">
+                                </div>
+                            </div>
+
+                            <div class="preference-item">
+                                <div class="preference-info">
+                                    <div class="preference-icon">
+                                        <i class="bi bi-power"></i>
+                                    </div>
+                                    <div>
+                                        <h5>Server Offline Alerts</h5>
+                                        <p>Get notified immediately when your server goes offline</p>
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" 
+                                           id="notificationsServerOffline" 
+                                           @bind="preferences.NotificationsServerOffline" 
+                                           @bind:after="SavePreferences">
+                                </div>
+                            </div>
+
+                            <div class="preference-item">
+                                <div class="preference-info">
+                                    <div class="preference-icon">
+                                        <i class="bi bi-speedometer2"></i>
+                                    </div>
+                                    <div>
+                                        <h5>Resource Alerts</h5>
+                                        <p>Receive alerts when server resources (CPU, RAM, Disk) are running low</p>
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" 
+                                           id="notificationsResourceAlerts" 
+                                           @bind="preferences.NotificationsResourceAlerts" 
+                                           @bind:after="SavePreferences">
+                                </div>
+                            </div>
+
+                            <div class="preference-item">
+                                <div class="preference-info">
+                                    <div class="preference-icon">
+                                        <i class="bi bi-credit-card"></i>
+                                    </div>
+                                    <div>
+                                        <h5>Payment Due Reminders</h5>
+                                        <p>Get reminders before your payment is due</p>
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" 
+                                           id="notificationsPaymentDue" 
+                                           @bind="preferences.NotificationsPaymentDue" 
+                                           @bind:after="SavePreferences">
+                                </div>
+                            </div>
+
+                            <div class="preference-item">
+                                <div class="preference-info">
+                                    <div class="preference-icon">
+                                        <i class="bi bi-shield-exclamation"></i>
+                                    </div>
+                                    <div>
+                                        <h5>Security Alerts</h5>
+                                        <p>Important notifications about account security and suspicious activity</p>
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" 
+                                           id="notificationsSecurityAlerts" 
+                                           @bind="preferences.NotificationsSecurityAlerts" 
+                                           @bind:after="SavePreferences">
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private string activeTab = "profile";
+
+    // Profile
+    private UserProfileResponse? userProfile;
+    private UpdateProfileRequest profileRequest = new();
+    private bool isProfileSaving = false;
+    private string? profileMessage;
+    private string profileMessageType = "success";
+
+    // Password
+    private ChangePasswordRequest passwordRequest = new();
+    private bool isPasswordSaving = false;
+    private string? passwordMessage;
+    private string passwordMessageType = "success";
+
+    // Preferences
+    private UserPreferencesDto? preferences;
+    private string? preferencesMessage;
+    private string preferencesMessageType = "success";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        
+        // Load user profile
+        userProfile = await UserService.GetProfileAsync();
+        if (userProfile != null)
+        {
+            profileRequest = new UpdateProfileRequest
+            {
+                FirstName = userProfile.FirstName,
+                LastName = userProfile.LastName,
+                Email = userProfile.Email,
+                PhoneNumber = userProfile.PhoneNumber
+            };
+        }
+
+        // Load preferences
+        preferences = await UserService.GetPreferencesAsync();
+
+        isLoading = false;
+    }
+
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+        // Clear messages when switching tabs
+        profileMessage = null;
+        passwordMessage = null;
+        preferencesMessage = null;
+    }
+
+    private async Task HandleProfileUpdate()
+    {
+        isProfileSaving = true;
+        profileMessage = null;
+
+        var result = await UserService.UpdateProfileAsync(profileRequest);
+
+        if (result != null)
+        {
+            userProfile = result;
+            profileMessage = "Profile updated successfully!";
+            profileMessageType = "success";
+        }
+        else
+        {
+            profileMessage = "Failed to update profile. Please try again.";
+            profileMessageType = "danger";
+        }
+
+        isProfileSaving = false;
+    }
+
+    private async Task HandlePasswordChange()
+    {
+        isPasswordSaving = true;
+        passwordMessage = null;
+
+        var success = await UserService.ChangePasswordAsync(passwordRequest);
+
+        if (success)
+        {
+            passwordMessage = "Password changed successfully!";
+            passwordMessageType = "success";
+            
+            // Reset the form
+            passwordRequest = new ChangePasswordRequest();
+        }
+        else
+        {
+            passwordMessage = "Failed to change password. Please check your current password and try again.";
+            passwordMessageType = "danger";
+        }
+
+        isPasswordSaving = false;
+    }
+
+    private async Task SavePreferences()
+    {
+        if (preferences == null) return;
+
+        preferencesMessage = null;
+        var result = await UserService.UpdatePreferencesAsync(preferences);
+
+        if (result != null)
+        {
+            preferences = result;
+            preferencesMessage = "Preferences saved successfully!";
+            preferencesMessageType = "success";
+
+            // Auto-hide the success message after 3 seconds
+            _ = Task.Delay(3000).ContinueWith(_ =>
+            {
+                preferencesMessage = null;
+                StateHasChanged();
+            });
+        }
+        else
+        {
+            preferencesMessage = "Failed to save preferences. Please try again.";
+            preferencesMessageType = "danger";
+        }
+    }
+}
