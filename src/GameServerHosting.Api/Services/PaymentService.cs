@@ -538,7 +538,7 @@ public class PaymentService : IPaymentService
 
             // Update payment details
             payment.Amount = paymentIntent.Amount / 100m; // Convert from cents to dollars
-            payment.Currency = (paymentIntent.Currency ?? "usd").ToUpper();
+            payment.Currency = paymentIntent.Currency?.ToUpper() ?? "USD";
             payment.Status = MapPaymentIntentStatus(paymentIntent.Status ?? "unknown");
             payment.PaymentMethod = Shared.Enums.PaymentMethod.Stripe;
             payment.UpdatedAt = DateTime.UtcNow;

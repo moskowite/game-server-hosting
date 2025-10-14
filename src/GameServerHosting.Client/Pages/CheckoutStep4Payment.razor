@@ -298,11 +298,11 @@
                 if (CheckoutService.State.BillingDetails != null)
                 {
                     var billing = CheckoutService.State.BillingDetails;
-                    billingName = billing.FullName ?? string.Empty;
+                    billingName = $"{billing.FirstName} {billing.LastName}".Trim();
                     billingEmail = billing.Email ?? string.Empty;
                     billingAddress = billing.Address ?? string.Empty;
                     billingCity = billing.City ?? string.Empty;
-                    billingPostalCode = billing.PostalCode ?? string.Empty;
+                    billingPostalCode = billing.ZipCode ?? string.Empty;
                     billingCountry = billing.Country ?? "US";
                 }
 
