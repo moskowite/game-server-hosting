@@ -64,6 +64,11 @@ public class ServerType
     /// Default server configuration (JSON)
     /// </summary>
     public string DefaultConfig { get; set; } = "{}";
+    
+    /// <summary>
+    /// Default game/software version
+    /// </summary>
+    public string? DefaultVersion { get; set; }
 
     /// <summary>
     /// Whether this server type is available for new orders

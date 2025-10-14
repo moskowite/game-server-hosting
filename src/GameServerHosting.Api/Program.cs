@@ -46,6 +46,11 @@ try
     // Configure Stripe Settings
     builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
     
+    // Configure Provisioning Settings
+    builder.Services.Configure<ProvisioningSettings>(builder.Configuration.GetSection("Provisioning"));
+    builder.Services.Configure<CloudProvidersSettings>(builder.Configuration.GetSection("CloudProviders"));
+    builder.Services.Configure<DigitalOceanSettings>(builder.Configuration.GetSection("CloudProviders:DigitalOcean"));
+    
     var jwtSecretKey = jwtSettings.GetValue<string>("SecretKey") ?? throw new InvalidOperationException("JWT SecretKey is not configured");
     var jwtIssuer = jwtSettings.GetValue<string>("Issuer") ?? "GameServerHosting.Api";
     var jwtAudience = jwtSettings.GetValue<string>("Audience") ?? "GameServerHosting.Client";
@@ -142,6 +147,10 @@ try
 
     // Register Invoice Service
     builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+
+    // Register Server Provisioning Services
+    builder.Services.AddHttpClient<ICloudProviderService, DigitalOceanProviderService>();
+    builder.Services.AddScoped<IServerProvisioningService, ServerProvisioningService>();
 
     // Configure CORS
     var corsConfig = builder.Configuration.GetSection("Cors");

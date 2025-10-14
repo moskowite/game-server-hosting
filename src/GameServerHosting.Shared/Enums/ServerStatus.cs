@@ -11,6 +11,21 @@ public enum ServerStatus
     Pending,
     
     /// <summary>
+    /// Creating cloud infrastructure (droplet, VM, etc.)
+    /// </summary>
+    Provisioning,
+    
+    /// <summary>
+    /// Installing software and configuring server
+    /// </summary>
+    Configuring,
+    
+    /// <summary>
+    /// Launching game server application
+    /// </summary>
+    Starting,
+    
+    /// <summary>
     /// Server is active and accessible
     /// </summary>
     Running,
@@ -24,6 +39,11 @@ public enum ServerStatus
     /// Server suspended (payment issue or expiration)
     /// </summary>
     Suspended,
+    
+    /// <summary>
+    /// Provisioning or startup failed
+    /// </summary>
+    Failed,
     
     /// <summary>
     /// Server permanently deleted

@@ -77,6 +77,53 @@ public class GameServer
     /// </summary>
     public DateTime UpdatedAt { get; set; }
 
+    // Provisioning fields
+    
+    /// <summary>
+    /// Cloud provider type (e.g., DigitalOcean, AWS, Azure)
+    /// </summary>
+    public string? ProviderType { get; set; }
+    
+    /// <summary>
+    /// Cloud provider's server identifier (e.g., Droplet ID)
+    /// </summary>
+    public string? ProviderId { get; set; }
+    
+    /// <summary>
+    /// Cloud provider region/datacenter
+    /// </summary>
+    public string? ProviderRegion { get; set; }
+    
+    /// <summary>
+    /// When provisioning started
+    /// </summary>
+    public DateTime? ProvisioningStartedAt { get; set; }
+    
+    /// <summary>
+    /// When provisioning completed
+    /// </summary>
+    public DateTime? ProvisioningCompletedAt { get; set; }
+    
+    /// <summary>
+    /// Error message if provisioning failed
+    /// </summary>
+    public string? ProvisioningError { get; set; }
+    
+    /// <summary>
+    /// SSH private key for server management (encrypted)
+    /// </summary>
+    public string? SshKeyPrivate { get; set; }
+    
+    /// <summary>
+    /// SSH public key fingerprint
+    /// </summary>
+    public string? SshKeyPublic { get; set; }
+    
+    /// <summary>
+    /// Health check status
+    /// </summary>
+    public string? HealthCheckStatus { get; set; }
+
     // Navigation properties
     
     /// <summary>
