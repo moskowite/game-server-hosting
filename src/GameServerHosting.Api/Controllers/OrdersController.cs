@@ -310,7 +310,7 @@ public class OrdersController : ControllerBase
             var order = await _context.Orders
                 .Include(o => o.GameServer)
                 .Include(o => o.ServerPlan)
-                    .ThenInclude(sp => sp.ServerType)
+                    .ThenInclude(sp => sp!.ServerType)
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             if (order == null)
@@ -387,7 +387,7 @@ public class OrdersController : ControllerBase
                 .Where(o => o.UserId == userId)
                 .Include(o => o.GameServer)
                 .Include(o => o.ServerPlan)
-                    .ThenInclude(sp => sp.ServerType)
+                    .ThenInclude(sp => sp!.ServerType)
                 .OrderByDescending(o => o.CreatedAt)
                 .Select(o => new OrderDto
                 {
@@ -444,7 +444,7 @@ public class OrdersController : ControllerBase
             var order = await _context.Orders
                 .Include(o => o.GameServer)
                 .Include(o => o.ServerPlan)
-                    .ThenInclude(sp => sp.ServerType)
+                    .ThenInclude(sp => sp!.ServerType)
                 .FirstOrDefaultAsync(o => o.Id == id);
 
             if (order == null)

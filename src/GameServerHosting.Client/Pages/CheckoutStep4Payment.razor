@@ -1,6 +1,10 @@
 @using GameServerHosting.Client.Models
 @using GameServerHosting.Client.Services
 @inject CheckoutService CheckoutService
+@inject PaymentService PaymentService
+@inject StripeSettings StripeSettings
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
 
 <link href="Pages/CheckoutSteps.css" rel="stylesheet" />
 
@@ -10,251 +14,500 @@
             <span class="bi bi-credit-card"></span>
             Payment Information
         </h2>
-        <p class="step-description">Securely enter your payment details</p>
+        <p class="step-description">Securely enter your payment details using Stripe</p>
     </div>
 
     <div class="payment-form">
-        <div class="payment-methods">
-            <h4 class="section-title">Select Payment Method</h4>
-            
-            <div class="method-options">
-                <div class="method-option @(paymentDetails.PaymentMethod == PaymentMethod.CreditCard ? "active" : "")"
-                     @onclick="() => SelectPaymentMethod(PaymentMethod.CreditCard)">
-                    <span class="bi bi-credit-card-2-front"></span>
-                    <span>Credit/Debit Card</span>
-                </div>
-                <div class="method-option @(paymentDetails.PaymentMethod == PaymentMethod.PayPal ? "active" : "")"
-                     @onclick="() => SelectPaymentMethod(PaymentMethod.PayPal)">
-                    <span class="bi bi-paypal"></span>
-                    <span>PayPal</span>
-                </div>
-                <div class="method-option @(paymentDetails.PaymentMethod == PaymentMethod.BankTransfer ? "active" : "")"
-                     @onclick="() => SelectPaymentMethod(PaymentMethod.BankTransfer)">
-                    <span class="bi bi-bank"></span>
-                    <span>Bank Transfer</span>
-                </div>
-                <div class="method-option @(paymentDetails.PaymentMethod == PaymentMethod.Cryptocurrency ? "active" : "")"
-                     @onclick="() => SelectPaymentMethod(PaymentMethod.Cryptocurrency)">
-                    <span class="bi bi-currency-bitcoin"></span>
-                    <span>Cryptocurrency</span>
-                </div>
-            </div>
-        </div>
-
-        @if (paymentDetails.PaymentMethod == PaymentMethod.CreditCard)
+        @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="payment-details">
+            <div class="alert alert-danger">
+                <span class="bi bi-exclamation-triangle"></span>
+                <span>@errorMessage</span>
+            </div>
+        }
+
+        @if (isProcessing)
+        {
+            <div class="payment-processing">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Processing...</span>
+                </div>
+                <h4>Processing Your Payment</h4>
+                <p>Please wait while we securely process your payment...</p>
+                <p class="processing-status">@processingStatus</p>
+            </div>
+        }
+        else if (paymentSuccess)
+        {
+            <div class="payment-success">
+                <span class="bi bi-check-circle-fill text-success"></span>
+                <h4>Payment Successful!</h4>
+                <p>Your payment has been processed successfully.</p>
+                <p class="payment-id">Transaction ID: @transactionId</p>
+            </div>
+        }
+        else
+        {
+            <div class="billing-details-section">
+                <h4 class="section-title">Billing Information</h4>
+                
                 <div class="form-group">
-                    <label class="form-label required">Card Number</label>
+                    <label class="form-label required">Full Name</label>
                     <input type="text" 
-                           class="form-control card-input" 
-                           placeholder="1234 5678 9012 3456"
-                           @bind="paymentDetails.CardNumber"
-                           @bind:after="UpdatePaymentDetails"
-                           maxlength="19" />
-                    <div class="card-brands">
-                        <span class="bi bi-credit-card"></span>
-                    </div>
+                           class="form-control @(ShowValidation() && string.IsNullOrWhiteSpace(billingName) ? "is-invalid" : "")"
+                           placeholder="John Doe"
+                           @bind="billingName"
+                           disabled="@isProcessing" />
+                    @if (ShowValidation() && string.IsNullOrWhiteSpace(billingName))
+                    {
+                        <div class="invalid-feedback">Billing name is required</div>
+                    }
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label required">Cardholder Name</label>
-                    <input type="text" 
-                           class="form-control" 
-                           placeholder="JOHN DOE"
-                           @bind="paymentDetails.CardholderName"
-                           @bind:after="UpdatePaymentDetails" />
+                    <label class="form-label required">Email</label>
+                    <input type="email" 
+                           class="form-control @(ShowValidation() && string.IsNullOrWhiteSpace(billingEmail) ? "is-invalid" : "")"
+                           placeholder="john.doe@example.com"
+                           @bind="billingEmail"
+                           disabled="@isProcessing" />
+                    @if (ShowValidation() && string.IsNullOrWhiteSpace(billingEmail))
+                    {
+                        <div class="invalid-feedback">Email is required</div>
+                    }
                 </div>
 
                 <div class="form-row">
-                    <div class="form-group expiry-group">
-                        <label class="form-label required">Expiration Date</label>
-                        <div class="expiry-inputs">
-                            <select class="form-select" 
-                                    @bind="paymentDetails.ExpirationMonth"
-                                    @bind:after="UpdatePaymentDetails">
-                                <option value="0">MM</option>
-                                @for (int i = 1; i <= 12; i++)
-                                {
-                                    <option value="@i">@i.ToString("D2")</option>
-                                }
-                            </select>
-                            <span class="expiry-separator">/</span>
-                            <select class="form-select" 
-                                    @bind="paymentDetails.ExpirationYear"
-                                    @bind:after="UpdatePaymentDetails">
-                                <option value="0">YYYY</option>
-                                @for (int year = DateTime.Now.Year; year <= DateTime.Now.Year + 10; year++)
-                                {
-                                    <option value="@year">@year</option>
-                                }
-                            </select>
-                        </div>
+                    <div class="form-group col-md-8">
+                        <label class="form-label required">Address</label>
+                        <input type="text" 
+                               class="form-control @(ShowValidation() && string.IsNullOrWhiteSpace(billingAddress) ? "is-invalid" : "")"
+                               placeholder="123 Main St"
+                               @bind="billingAddress"
+                               disabled="@isProcessing" />
+                        @if (ShowValidation() && string.IsNullOrWhiteSpace(billingAddress))
+                        {
+                            <div class="invalid-feedback">Address is required</div>
+                        }
                     </div>
 
-                    <div class="form-group cvv-group">
-                        <label class="form-label required">CVV</label>
+                    <div class="form-group col-md-4">
+                        <label class="form-label required">ZIP / Postal Code</label>
                         <input type="text" 
-                               class="form-control" 
-                               placeholder="123"
-                               @bind="paymentDetails.CVV"
-                               @bind:after="UpdatePaymentDetails"
-                               maxlength="4" />
-                        <small class="form-text">3-4 digit code on back of card</small>
+                               class="form-control @(ShowValidation() && string.IsNullOrWhiteSpace(billingPostalCode) ? "is-invalid" : "")"
+                               placeholder="12345"
+                               @bind="billingPostalCode"
+                               disabled="@isProcessing" />
+                        @if (ShowValidation() && string.IsNullOrWhiteSpace(billingPostalCode))
+                        {
+                            <div class="invalid-feedback">ZIP code is required</div>
+                        }
                     </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label class="form-label required">City</label>
+                        <input type="text" 
+                               class="form-control @(ShowValidation() && string.IsNullOrWhiteSpace(billingCity) ? "is-invalid" : "")"
+                               placeholder="San Francisco"
+                               @bind="billingCity"
+                               disabled="@isProcessing" />
+                        @if (ShowValidation() && string.IsNullOrWhiteSpace(billingCity))
+                        {
+                            <div class="invalid-feedback">City is required</div>
+                        }
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label class="form-label required">Country</label>
+                        <input type="text" 
+                               class="form-control @(ShowValidation() && string.IsNullOrWhiteSpace(billingCountry) ? "is-invalid" : "")"
+                               placeholder="US"
+                               @bind="billingCountry"
+                               disabled="@isProcessing" />
+                        @if (ShowValidation() && string.IsNullOrWhiteSpace(billingCountry))
+                        {
+                            <div class="invalid-feedback">Country is required</div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="payment-details">
+                <h4 class="section-title">Card Information</h4>
+                
+                <div class="form-group">
+                    <label class="form-label required">Card Details</label>
+                    <div id="stripe-card-element" class="stripe-element @(ShowValidation() && !cardComplete ? "is-invalid" : "")">
+                        <!-- Stripe card element will be mounted here -->
+                    </div>
+                    @if (ShowValidation() && !cardComplete)
+                    {
+                        <div class="invalid-feedback d-block">@(cardError ?? "Please enter valid card details")</div>
+                    }
+                    @if (!string.IsNullOrEmpty(cardBrand) && cardBrand != "unknown")
+                    {
+                        <div class="card-brand-info">
+                            <span class="bi bi-credit-card"></span> @cardBrand.ToUpper()
+                        </div>
+                    }
                 </div>
 
                 <div class="save-payment">
                     <input type="checkbox" 
                            id="save-payment" 
-                           @bind="paymentDetails.SavePaymentMethod"
-                           @bind:after="UpdatePaymentDetails" />
+                           @bind="savePaymentMethod"
+                           disabled="@isProcessing" />
                     <label for="save-payment">
                         <span class="bi bi-bookmark"></span>
                         Save this payment method for future purchases
                     </label>
                 </div>
             </div>
-        }
-        else if (paymentDetails.PaymentMethod == PaymentMethod.PayPal)
-        {
-            <div class="payment-details">
-                <div class="paypal-info">
-                    <span class="bi bi-paypal paypal-icon"></span>
-                    <h4>Pay with PayPal</h4>
-                    <p>You'll be redirected to PayPal to complete your purchase securely.</p>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">PayPal Email (Optional)</label>
-                    <input type="email" 
-                           class="form-control" 
-                           placeholder="your-email@example.com"
-                           @bind="paymentDetails.PayPalEmail"
-                           @bind:after="UpdatePaymentDetails" />
-                </div>
-            </div>
-        }
-        else if (paymentDetails.PaymentMethod == PaymentMethod.BankTransfer)
-        {
-            <div class="payment-details">
-                <div class="bank-info">
-                    <span class="bi bi-bank2 bank-icon"></span>
-                    <h4>Bank Transfer</h4>
-                    <p>Transfer funds directly from your bank account. Processing may take 2-3 business days.</p>
-                </div>
-            </div>
-        }
-        else if (paymentDetails.PaymentMethod == PaymentMethod.Cryptocurrency)
-        {
-            <div class="payment-details">
-                <div class="crypto-info">
-                    <span class="bi bi-currency-bitcoin crypto-icon"></span>
-                    <h4>Pay with Cryptocurrency</h4>
-                    <p>We accept Bitcoin, Ethereum, and other major cryptocurrencies.</p>
-                </div>
-            </div>
-        }
 
-        <div class="order-review">
-            <h4 class="section-title">Order Summary</h4>
-            <div class="review-summary">
-                <div class="summary-row">
-                    <span>Subtotal</span>
-                    <span>${{CheckoutService.State.Subtotal.ToString("F2")}}</span>
-                </div>
-                @if (CheckoutService.State.Discount > 0)
-                {
-                    <div class="summary-row discount">
-                        <span><span class="bi bi-tag"></span> Discount</span>
-                        <span>-$@CheckoutService.State.Discount.ToString("F2")</span>
+            <div class="order-review">
+                <h4 class="section-title">Order Summary</h4>
+                <div class="review-summary">
+                    <div class="summary-row">
+                        <span>Subtotal</span>
+                        <span>${{CheckoutService.State.Subtotal.ToString("F2")}}</span>
                     </div>
-                }
-                <div class="summary-row">
-                    <span>Tax</span>
-                    <span>$@CheckoutService.State.Tax.ToString("F2")</span>
-                </div>
-                <div class="summary-divider"></div>
-                <div class="summary-row total">
-                    <span>Total Due</span>
-                    <span>$@CheckoutService.State.Total.ToString("F2")</span>
+                    @if (CheckoutService.State.Discount > 0)
+                    {
+                        <div class="summary-row discount">
+                            <span><span class="bi bi-tag"></span> Discount</span>
+                            <span>-$@CheckoutService.State.Discount.ToString("F2")</span>
+                        </div>
+                    }
+                    <div class="summary-row">
+                        <span>Tax</span>
+                        <span>$@CheckoutService.State.Tax.ToString("F2")</span>
+                    </div>
+                    <div class="summary-divider"></div>
+                    <div class="summary-row total">
+                        <span>Total Due</span>
+                        <span>$@CheckoutService.State.Total.ToString("F2")</span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="terms-agreement">
-            <input type="checkbox" 
-                   id="agree-terms" 
-                   @bind="paymentDetails.AgreeToTerms"
-                   @bind:after="UpdatePaymentDetails" />
-            <label for="agree-terms">
-                I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a>
-            </label>
-        </div>
+            <div class="terms-agreement">
+                <input type="checkbox" 
+                       id="agree-terms" 
+                       @bind="agreeToTerms"
+                       disabled="@isProcessing" />
+                <label for="agree-terms">
+                    I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a>
+                </label>
+            </div>
 
-        @if (IsPaymentFormValid())
-        {
-            <div class="payment-status success">
-                <span class="bi bi-shield-check"></span>
-                <span>Ready to process payment</span>
+            @if (IsPaymentFormValid())
+            {
+                <div class="payment-status success">
+                    <span class="bi bi-shield-check"></span>
+                    <span>Ready to process payment</span>
+                </div>
+            }
+            else
+            {
+                <div class="payment-status warning">
+                    <span class="bi bi-exclamation-triangle"></span>
+                    <span>Please complete all required fields and agree to terms</span>
+                </div>
+            }
+
+            <div class="security-notice">
+                <span class="bi bi-lock-fill"></span>
+                <div>
+                    <strong>Secure Payment</strong>
+                    <p>Your payment information is encrypted and secure. We use Stripe for secure payment processing and never store your full card details.</p>
+                </div>
             </div>
         }
-        else
-        {
-            <div class="payment-status warning">
-                <span class="bi bi-exclamation-triangle"></span>
-                <span>Please complete payment information and agree to terms</span>
-            </div>
-        }
-
-        <div class="security-notice">
-            <span class="bi bi-lock-fill"></span>
-            <div>
-                <strong>Secure Payment</strong>
-                <p>Your payment information is encrypted and secure. We never store your full card details.</p>
-            </div>
-        </div>
     </div>
 </div>
 
 @code {
-    private PaymentDetails paymentDetails = new();
+    private DotNetObjectReference<CheckoutStep4Payment>? dotNetReference;
+    private bool stripeInitialized = false;
+    private bool cardComplete = false;
+    private string? cardError = null;
+    private string? cardBrand = null;
+    
+    // Billing details
+    private string billingName = string.Empty;
+    private string billingEmail = string.Empty;
+    private string billingAddress = string.Empty;
+    private string billingCity = string.Empty;
+    private string billingPostalCode = string.Empty;
+    private string billingCountry = "US";
+    
+    // Payment state
+    private bool savePaymentMethod = false;
+    private bool agreeToTerms = false;
+    private bool isProcessing = false;
+    private bool paymentSuccess = false;
+    private string? errorMessage = null;
+    private string? processingStatus = null;
+    private string? transactionId = null;
+    private bool validationAttempted = false;
 
-    protected override void OnInitialized()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (CheckoutService.State.PaymentDetails != null)
+        if (firstRender)
         {
-            paymentDetails = CheckoutService.State.PaymentDetails;
+            try
+            {
+                // Create .NET reference for JS callbacks
+                dotNetReference = DotNetObjectReference.Create(this);
+
+                // Initialize Stripe
+                var initialized = await JSRuntime.InvokeAsync<bool>(
+                    "stripeInterop.initialize",
+                    StripeSettings.PublishableKey);
+
+                if (!initialized)
+                {
+                    errorMessage = "Failed to initialize Stripe. Please refresh the page and try again.";
+                    StateHasChanged();
+                    return;
+                }
+
+                // Create and mount card element
+                var cardMounted = await JSRuntime.InvokeAsync<bool>(
+                    "stripeInterop.createCardElement",
+                    "stripe-card-element",
+                    null);
+
+                if (!cardMounted)
+                {
+                    errorMessage = "Failed to create card input. Please refresh the page and try again.";
+                    StateHasChanged();
+                    return;
+                }
+
+                // Add change listener
+                await JSRuntime.InvokeVoidAsync(
+                    "stripeInterop.addCardChangeListener",
+                    dotNetReference);
+
+                stripeInitialized = true;
+
+                // Load billing details from checkout state if available
+                if (CheckoutService.State.BillingDetails != null)
+                {
+                    var billing = CheckoutService.State.BillingDetails;
+                    billingName = $"{billing.FirstName} {billing.LastName}".Trim();
+                    billingEmail = billing.Email ?? string.Empty;
+                    billingAddress = billing.Address ?? string.Empty;
+                    billingCity = billing.City ?? string.Empty;
+                    billingPostalCode = billing.ZipCode ?? string.Empty;
+                    billingCountry = billing.Country ?? "US";
+                }
+
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error initializing payment form: {ex.Message}";
+                StateHasChanged();
+            }
         }
     }
 
-    private void SelectPaymentMethod(PaymentMethod method)
+    [JSInvokable]
+    public void OnCardChange(CardChangeEvent cardChange)
     {
-        paymentDetails.PaymentMethod = method;
-        UpdatePaymentDetails();
+        cardComplete = cardChange.Complete;
+        cardError = cardChange.Error;
+        cardBrand = cardChange.Brand;
+        StateHasChanged();
     }
 
-    private void UpdatePaymentDetails()
+    public async Task ProcessPaymentAsync()
     {
-        CheckoutService.UpdatePaymentDetails(paymentDetails);
+        validationAttempted = true;
+        
+        if (!IsPaymentFormValid())
+        {
+            errorMessage = "Please complete all required fields before submitting payment.";
+            StateHasChanged();
+            return;
+        }
+
+        if (!stripeInitialized)
+        {
+            errorMessage = "Payment system not initialized. Please refresh the page and try again.";
+            return;
+        }
+
+        try
+        {
+            isProcessing = true;
+            errorMessage = null;
+            processingStatus = "Creating payment intent...";
+            StateHasChanged();
+
+            // Calculate amount in cents
+            var amountInCents = (long)(CheckoutService.State.Total * 100);
+
+            // Create payment intent
+            var paymentIntentResponse = await PaymentService.CreatePaymentIntentAsync(
+                amountInCents,
+                "usd",
+                null,
+                new Dictionary<string, string>
+                {
+                    { "billing_name", billingName },
+                    { "billing_email", billingEmail }
+                });
+
+            if (paymentIntentResponse == null || string.IsNullOrEmpty(paymentIntentResponse.ClientSecret))
+            {
+                throw new Exception("Failed to create payment intent");
+            }
+
+            processingStatus = "Processing card information...";
+            StateHasChanged();
+
+            // Create payment method with billing details
+            var billingDetails = new
+            {
+                name = billingName,
+                email = billingEmail,
+                address = new
+                {
+                    line1 = billingAddress,
+                    city = billingCity,
+                    postal_code = billingPostalCode,
+                    country = billingCountry
+                }
+            };
+
+            var paymentMethodResult = await JSRuntime.InvokeAsync<PaymentMethodResult>(
+                "stripeInterop.createPaymentMethod",
+                billingDetails);
+
+            if (!paymentMethodResult.Success || string.IsNullOrEmpty(paymentMethodResult.PaymentMethodId))
+            {
+                throw new Exception(paymentMethodResult.Error ?? "Failed to create payment method");
+            }
+
+            processingStatus = "Confirming payment...";
+            StateHasChanged();
+
+            // Confirm payment
+            var confirmResult = await JSRuntime.InvokeAsync<ConfirmPaymentResult>(
+                "stripeInterop.confirmCardPayment",
+                paymentIntentResponse.ClientSecret,
+                paymentMethodResult.PaymentMethodId);
+
+            if (!confirmResult.Success)
+            {
+                throw new Exception(confirmResult.Error ?? "Payment confirmation failed");
+            }
+
+            processingStatus = "Payment successful! Completing order...";
+            transactionId = confirmResult.PaymentIntentId;
+            StateHasChanged();
+
+            // Update payment details in checkout state
+            var paymentDetails = new PaymentDetails
+            {
+                PaymentMethod = PaymentMethod.CreditCard,
+                CardholderName = billingName,
+                AgreeToTerms = agreeToTerms,
+                SavePaymentMethod = savePaymentMethod
+            };
+            CheckoutService.UpdatePaymentDetails(paymentDetails);
+
+            // Process the order
+            var orderSuccess = await CheckoutService.ProcessPaymentAsync();
+            
+            if (orderSuccess)
+            {
+                paymentSuccess = true;
+                isProcessing = false;
+                StateHasChanged();
+                
+                // Wait a moment then move to next step
+                await Task.Delay(1500);
+                CheckoutService.NextStep();
+            }
+            else
+            {
+                throw new Exception("Failed to create order after payment");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Payment failed: {ex.Message}";
+            isProcessing = false;
+            processingStatus = null;
+            StateHasChanged();
+        }
     }
 
     private bool IsPaymentFormValid()
     {
-        if (!paymentDetails.AgreeToTerms)
-            return false;
-
-        return paymentDetails.PaymentMethod switch
-        {
-            PaymentMethod.CreditCard => !string.IsNullOrWhiteSpace(paymentDetails.CardNumber) &&
-                                       !string.IsNullOrWhiteSpace(paymentDetails.CardholderName) &&
-                                       paymentDetails.ExpirationMonth > 0 &&
-                                       paymentDetails.ExpirationYear > 0 &&
-                                       !string.IsNullOrWhiteSpace(paymentDetails.CVV) &&
-                                       paymentDetails.CVV.Length >= 3,
-            PaymentMethod.PayPal => true,
-            PaymentMethod.BankTransfer => true,
-            PaymentMethod.Cryptocurrency => true,
-            _ => false
-        };
+        return !string.IsNullOrWhiteSpace(billingName) &&
+               !string.IsNullOrWhiteSpace(billingEmail) &&
+               !string.IsNullOrWhiteSpace(billingAddress) &&
+               !string.IsNullOrWhiteSpace(billingCity) &&
+               !string.IsNullOrWhiteSpace(billingPostalCode) &&
+               !string.IsNullOrWhiteSpace(billingCountry) &&
+               cardComplete &&
+               agreeToTerms;
     }
+
+    private bool ShowValidation()
+    {
+        return validationAttempted;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (stripeInitialized)
+            {
+                await JSRuntime.InvokeVoidAsync("stripeInterop.destroy");
+            }
+            
+            dotNetReference?.Dispose();
+        }
+        catch
+        {
+            // Ignore disposal errors
+        }
+    }
+
+    #region Helper Classes
+
+    public class CardChangeEvent
+    {
+        public bool Complete { get; set; }
+        public string? Error { get; set; }
+        public string Brand { get; set; } = "unknown";
+    }
+
+    public class PaymentMethodResult
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public string? PaymentMethodId { get; set; }
+        public string? Brand { get; set; }
+        public string? Last4 { get; set; }
+    }
+
+    public class ConfirmPaymentResult
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public string? PaymentIntentId { get; set; }
+        public string? Status { get; set; }
+    }
+
+    #endregion
 }
