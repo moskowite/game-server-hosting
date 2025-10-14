@@ -3,7 +3,17 @@
 [![CI Pipeline](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/ci.yml)
 [![CD Pipeline](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/cd.yml/badge.svg)](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/cd.yml)
 
-A .NET 8.0 solution for game server hosting marketplace.
+A modern .NET 8.0 game server hosting marketplace with Blazor WebAssembly frontend, ASP.NET Core backend, and PostgreSQL database.
+
+## 📚 Documentation
+
+**👉 [Complete Documentation](docs/README.md)** - Start here for setup, development, and deployment guides
+
+### Quick Links
+- 🚀 [Quick Start](docs/setup/quick-start.md) - Get running in 5 minutes
+- 💻 [Local Development](docs/setup/quick-start.md) - Complete setup guide
+- 🏗️ [Architecture](docs/README.md#-project-structure) - System design
+- 🐛 [Troubleshooting](docs/reference/troubleshooting.md) - Common issues
 
 ## Solution Structure
 
@@ -43,88 +53,72 @@ Shared class library containing common models, DTOs, and contracts used by both 
 - .NET 8.0
 - Class Library
 
-## Getting Started
-
-### Prerequisites
-- .NET 8.0 SDK or later
-- Your favorite IDE (Visual Studio, VS Code, JetBrains Rider)
-
-### Building the Solution
+## 🚀 Quick Start
 
 ```bash
-dotnet build
+# 1. Start PostgreSQL
+docker-compose up -d postgres
+
+# 2. Apply migrations
+dotnet ef database update --project src/GameServerHosting.Api
+
+# 3. Run the application (in VS Code/Cursor)
+Press F5 → Select "Full Stack (API + Client)"
+
+# Or run from command line:
+dotnet run --project src/GameServerHosting.Api      # Terminal 1
+dotnet run --project src/GameServerHosting.Client   # Terminal 2
 ```
 
-### Running the API
+**Access the application:**
+- 🔧 API/Swagger: http://localhost:5292/swagger
+- 🌐 Client UI: http://localhost:5106
+- 🗄️ pgAdmin: http://localhost:5050 (optional)
+
+📖 **Need more details?** See the [Quick Start Guide](docs/setup/quick-start.md)
+
+## 🛠️ Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| **Backend** | ASP.NET Core 8.0, Entity Framework Core |
+| **Frontend** | Blazor WebAssembly |
+| **Database** | PostgreSQL 16 |
+| **Authentication** | ASP.NET Identity, JWT |
+| **Email** | SMTP with MailKit |
+| **Deployment** | Docker, GitHub Actions |
+
+## 📋 Common Commands
 
 ```bash
-dotnet run --project src/GameServerHosting.Api
+# Development
+dotnet build                                        # Build solution
+dotnet test                                         # Run tests
+dotnet watch run --project src/GameServerHosting.Api  # Hot reload
+
+# Database
+dotnet ef migrations add <Name> --project src/GameServerHosting.Api
+dotnet ef database update --project src/GameServerHosting.Api
+
+# Docker
+docker-compose up -d              # Start all services
+docker-compose down               # Stop all services  
+docker ps                         # Check running containers
+
+# CI/CD
+gh workflow run ci.yml            # Trigger CI
+gh workflow run cd.yml -f environment=staging    # Deploy to staging
 ```
 
-The API will be available at `http://localhost:5000` by default.
+## 🤝 Contributing
 
-### Running the Blazor Client
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-```bash
-dotnet run --project src/GameServerHosting.Client
-```
-
-The client will be available at `http://localhost:5001` by default.
-
-### Running Both Projects
-
-To run both the API and Client simultaneously, open two terminal windows and run each project in its own terminal.
-
-## Project References
-
-- `GameServerHosting.Api` → references → `GameServerHosting.Shared`
-- `GameServerHosting.Client` → references → `GameServerHosting.Shared`
-
-## CI/CD Pipeline
-
-This project uses GitHub Actions for continuous integration and deployment.
-
-### Workflows
-
-- **CI Pipeline**: Automated builds, tests, code quality checks, and security scans on every push and PR
-- **CD Pipeline**: Automated deployments to staging and production environments
-- **PR Checks**: Fast feedback on pull requests with validation and conflict detection
-- **Dependabot**: Automated dependency updates for NuGet packages and GitHub Actions
-
-For detailed CI/CD setup and usage instructions, see [CI/CD Setup Guide](CI_CD_SETUP.md).
-
-### Quick Commands
-
-```bash
-# View workflow runs
-gh run list
-
-# Trigger CI manually
-gh workflow run ci.yml
-
-# Deploy to staging
-gh workflow run cd.yml -f environment=staging
-
-# Deploy to production
-gh workflow run cd.yml -f environment=production
-```
-
-## Development
-
-### Adding New Projects
-
-To add a new project to the solution:
-
-```bash
-dotnet new <template> -n <ProjectName> -o src/<ProjectName>
-dotnet sln add src/<ProjectName>/<ProjectName>.csproj
-```
-
-### Adding Project References
-
-```bash
-dotnet add <project-path> reference <reference-project-path>
-```
+See [Contributing Guide](docs/README.md) for more details.
 
 ## License
 
