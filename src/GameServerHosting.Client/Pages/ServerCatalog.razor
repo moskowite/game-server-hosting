@@ -1,0 +1,203 @@
+@page "/servers"
+@using GameServerHosting.Client.Models
+@using GameServerHosting.Client.Services
+@inject ServerCatalogService ServerCatalogService
+
+<PageTitle>Server Catalog</PageTitle>
+
+<div class="catalog-container">
+    <div class="catalog-header">
+        <h1 class="catalog-title">Game Server Catalog</h1>
+        <p class="catalog-subtitle">Choose the perfect server for your gaming needs</p>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-container">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="loading-text">Loading servers...</p>
+        </div>
+    }
+    else if (serverTypes == null || !serverTypes.Any())
+    {
+        <div class="empty-state">
+            <div class="empty-icon">
+                <span class="bi bi-server"></span>
+            </div>
+            <h3>No Servers Available</h3>
+            <p>Check back later for new server options.</p>
+        </div>
+    }
+    else
+    {
+        <div class="filter-section">
+            <div class="filter-group">
+                <label for="game-filter">Filter by Game:</label>
+                <select id="game-filter" class="form-select" @onchange="OnGameFilterChanged">
+                    <option value="">All Games</option>
+                    @foreach (var game in gameNames)
+                    {
+                        <option value="@game">@game</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="server-grid">
+            @foreach (var server in filteredServerTypes)
+            {
+                <div class="server-card" @onclick="() => SelectServer(server)">
+                    <div class="card-header">
+                        <div class="game-icon">
+                            <span class="bi @GetGameIcon(server.GameName)"></span>
+                        </div>
+                        <div class="card-badge">
+                            @server.GameName
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <h3 class="server-name">@server.Name</h3>
+                        <p class="server-description">@server.Description</p>
+                        
+                        <div class="server-specs">
+                            <div class="spec-item">
+                                <span class="bi bi-cpu"></span>
+                                <span class="spec-label">CPU</span>
+                                <span class="spec-value">@server.CpuCores Cores</span>
+                            </div>
+                            <div class="spec-item">
+                                <span class="bi bi-memory"></span>
+                                <span class="spec-label">RAM</span>
+                                <span class="spec-value">@FormatMemory(server.RamMb)</span>
+                            </div>
+                            <div class="spec-item">
+                                <span class="bi bi-hdd"></span>
+                                <span class="spec-label">Storage</span>
+                                <span class="spec-value">@server.DiskGb GB</span>
+                            </div>
+                            <div class="spec-item">
+                                <span class="bi bi-people"></span>
+                                <span class="spec-label">Players</span>
+                                <span class="spec-value">Up to @server.MaxPlayers</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer">
+                        <div class="pricing">
+                            <div class="price-item">
+                                <span class="price-label">Hourly</span>
+                                <span class="price-value">$@server.HourlyPrice.ToString("F2")/hr</span>
+                            </div>
+                            <div class="price-item featured">
+                                <span class="price-label">Monthly</span>
+                                <span class="price-value">$@server.MonthlyPrice.ToString("F2")/mo</span>
+                                <span class="savings">Save @CalculateSavings(server)%</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary select-btn">
+                            Select Server
+                            <span class="bi bi-arrow-right"></span>
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<ServerTypeDto>? serverTypes;
+    private List<ServerTypeDto> filteredServerTypes = new();
+    private List<string> gameNames = new();
+    private bool isLoading = true;
+    private string selectedGameFilter = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadServerTypes();
+    }
+
+    private async Task LoadServerTypes()
+    {
+        isLoading = true;
+        serverTypes = await ServerCatalogService.GetServerTypesAsync(isActive: true);
+        
+        if (serverTypes != null && serverTypes.Any())
+        {
+            gameNames = serverTypes
+                .Select(s => s.GameName)
+                .Distinct()
+                .OrderBy(g => g)
+                .ToList();
+            
+            filteredServerTypes = serverTypes;
+        }
+        
+        isLoading = false;
+    }
+
+    private void OnGameFilterChanged(ChangeEventArgs e)
+    {
+        selectedGameFilter = e.Value?.ToString() ?? "";
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        if (serverTypes == null) return;
+
+        filteredServerTypes = serverTypes;
+
+        if (!string.IsNullOrEmpty(selectedGameFilter))
+        {
+            filteredServerTypes = filteredServerTypes
+                .Where(s => s.GameName.Equals(selectedGameFilter, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
+
+    private void SelectServer(ServerTypeDto server)
+    {
+        // TODO: Navigate to server order page or show details
+        Console.WriteLine($"Selected server: {server.Name}");
+    }
+
+    private string GetGameIcon(string gameName)
+    {
+        return gameName.ToLower() switch
+        {
+            "minecraft" => "bi-square-fill",
+            "cs:go" or "counter-strike" => "bi-crosshair",
+            "rust" => "bi-hammer",
+            "ark" => "bi-egg",
+            "terraria" => "bi-tree-fill",
+            "valheim" => "bi-shield-fill",
+            "7 days to die" => "bi-radioactive",
+            _ => "bi-controller"
+        };
+    }
+
+    private string FormatMemory(int ramMb)
+    {
+        if (ramMb >= 1024)
+        {
+            return $"{ramMb / 1024} GB";
+        }
+        return $"{ramMb} MB";
+    }
+
+    private int CalculateSavings(ServerTypeDto server)
+    {
+        if (server.HourlyPrice == 0) return 0;
+        
+        var hourlyMonthly = server.HourlyPrice * 730; // Average hours per month
+        if (hourlyMonthly == 0) return 0;
+        
+        var savings = ((hourlyMonthly - server.MonthlyPrice) / hourlyMonthly) * 100;
+        return (int)Math.Round(savings);
+    }
+}
