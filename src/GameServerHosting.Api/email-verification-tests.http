@@ -1,0 +1,136 @@
+### Email Verification API Tests
+### For use with VS Code REST Client extension or similar tools
+
+@baseUrl = http://localhost:5000
+@email = test@example.com
+@userName = testuser
+@password = TestPass123!
+
+### 1. Register a new user (will send verification email)
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "userName": "{{userName}}",
+  "email": "{{email}}",
+  "firstName": "Test",
+  "lastName": "User",
+  "password": "{{password}}"
+}
+
+### Expected Response:
+### {
+###   "message": "Registration successful! Please check your email to verify your account.",
+###   "email": "test@example.com",
+###   "requiresEmailVerification": true
+### }
+
+###
+
+### 2. Try to login before email verification (should fail)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "rememberMe": false
+}
+
+### Expected Response (401 Unauthorized):
+### {
+###   "message": "Please verify your email address before logging in. Check your inbox for the verification link."
+### }
+
+###
+
+### 3. Resend verification email
+POST {{baseUrl}}/api/auth/resend-verification-email
+Content-Type: application/json
+
+{
+  "email": "{{email}}"
+}
+
+### Expected Response:
+### {
+###   "message": "If the email exists in our system and is not yet verified, a verification link has been sent."
+### }
+
+###
+
+### 4. Verify email (replace TOKEN_FROM_EMAIL with actual token from email)
+POST {{baseUrl}}/api/auth/verify-email
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "token": "TOKEN_FROM_EMAIL"
+}
+
+### Expected Response:
+### {
+###   "message": "Email verified successfully! You can now log in."
+### }
+
+###
+
+### 5. Login after email verification (should succeed)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "rememberMe": false
+}
+
+### Expected Response (200 OK):
+### {
+###   "accessToken": "jwt_token...",
+###   "refreshToken": "refresh_token...",
+###   "tokenType": "Bearer",
+###   "expiresIn": 3600,
+###   "userId": "...",
+###   "userName": "testuser",
+###   "email": "test@example.com",
+###   "role": "User"
+### }
+
+###
+
+### 6. Try to verify already verified email
+POST {{baseUrl}}/api/auth/verify-email
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "token": "ANY_TOKEN"
+}
+
+### Expected Response:
+### {
+###   "message": "Email is already verified. You can now log in."
+### }
+
+###
+
+### 7. Test forgot password (sends reset email)
+POST {{baseUrl}}/api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "{{email}}"
+}
+
+### Expected Response:
+### {
+###   "message": "If the email exists in our system, a password reset link has been sent."
+### }
+
+###
+
+### 8. Health Check
+GET {{baseUrl}}/health
+
+###
