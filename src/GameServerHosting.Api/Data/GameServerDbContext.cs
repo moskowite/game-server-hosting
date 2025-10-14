@@ -21,6 +21,7 @@ public class GameServerDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<Order> Orders { get; set; } = null!;
     public DbSet<Payment> Payments { get; set; } = null!;
     public DbSet<UserPreferences> UserPreferences { get; set; } = null!;
+    public DbSet<CartItem> CartItems { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -738,6 +739,74 @@ public class GameServerDbContext : IdentityDbContext<ApplicationUser, IdentityRo
             entity.HasIndex(e => e.RefundedAt).HasDatabaseName("idx_payments_refunded_at");
             
             // Relationships configured in Order and User entities
+        });
+
+        // ===== CartItem Configuration =====
+        modelBuilder.Entity<CartItem>(entity =>
+        {
+            entity.ToTable("cart_items", t =>
+            {
+                t.HasCheckConstraint("ck_cart_items_quantity", "quantity > 0");
+                t.HasCheckConstraint("ck_cart_items_price", "price >= 0");
+            });
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Id)
+                .HasColumnName("id")
+                .HasDefaultValueSql("uuid_generate_v4()");
+            
+            entity.Property(e => e.UserId)
+                .HasColumnName("user_id")
+                .IsRequired();
+            
+            entity.Property(e => e.ServerPlanId)
+                .HasColumnName("server_plan_id")
+                .IsRequired();
+            
+            entity.Property(e => e.Quantity)
+                .HasColumnName("quantity")
+                .HasDefaultValue(1)
+                .IsRequired();
+            
+            entity.Property(e => e.Price)
+                .HasColumnName("price")
+                .HasColumnType("decimal(10,2)")
+                .IsRequired();
+            
+            entity.Property(e => e.Currency)
+                .HasColumnName("currency")
+                .HasMaxLength(3)
+                .HasDefaultValue("USD")
+                .IsRequired();
+            
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .IsRequired();
+            
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("updated_at")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .IsRequired();
+            
+            // Indexes
+            entity.HasIndex(e => e.UserId).HasDatabaseName("idx_cart_items_user_id");
+            entity.HasIndex(e => e.ServerPlanId).HasDatabaseName("idx_cart_items_server_plan_id");
+            entity.HasIndex(e => new { e.UserId, e.ServerPlanId })
+                .IsUnique()
+                .HasDatabaseName("idx_cart_items_user_plan");
+            entity.HasIndex(e => e.CreatedAt).HasDatabaseName("idx_cart_items_created_at");
+            
+            // Relationships
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(e => e.ServerPlan)
+                .WithMany()
+                .HasForeignKey(e => e.ServerPlanId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
