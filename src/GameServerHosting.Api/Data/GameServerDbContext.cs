@@ -1,10 +1,12 @@
 using GameServerHosting.Shared.Entities;
 using GameServerHosting.Shared.Enums;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace GameServerHosting.Api.Data;
 
-public class GameServerDbContext : DbContext
+public class GameServerDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
 {
     public GameServerDbContext(DbContextOptions<GameServerDbContext> options)
         : base(options)
@@ -12,7 +14,7 @@ public class GameServerDbContext : DbContext
     }
 
     // DbSet properties
-    public DbSet<User> Users { get; set; } = null!;
+    public DbSet<ApplicationUser> ApplicationUsers { get; set; } = null!;
     public DbSet<ServerType> ServerTypes { get; set; } = null!;
     public DbSet<ServerPlan> ServerPlans { get; set; } = null!;
     public DbSet<GameServer> GameServers { get; set; } = null!;
@@ -23,31 +25,12 @@ public class GameServerDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // ===== User Configuration =====
-        modelBuilder.Entity<User>(entity =>
+        // Configure Identity table names to match PostgreSQL naming convention
+        modelBuilder.Entity<ApplicationUser>(entity =>
         {
             entity.ToTable("users");
-            entity.HasKey(e => e.Id);
             
-            entity.Property(e => e.Id)
-                .HasColumnName("id")
-                .HasDefaultValueSql("uuid_generate_v4()");
-            
-            entity.Property(e => e.Email)
-                .HasColumnName("email")
-                .HasMaxLength(255)
-                .IsRequired();
-            
-            entity.Property(e => e.Username)
-                .HasColumnName("username")
-                .HasMaxLength(50)
-                .IsRequired();
-            
-            entity.Property(e => e.PasswordHash)
-                .HasColumnName("password_hash")
-                .HasMaxLength(255)
-                .IsRequired();
-            
+            // Custom properties
             entity.Property(e => e.FirstName)
                 .HasColumnName("first_name")
                 .HasMaxLength(100)
@@ -57,10 +40,6 @@ public class GameServerDbContext : DbContext
                 .HasColumnName("last_name")
                 .HasMaxLength(100)
                 .IsRequired();
-            
-            entity.Property(e => e.PhoneNumber)
-                .HasColumnName("phone_number")
-                .HasMaxLength(20);
             
             entity.Property(e => e.Role)
                 .HasColumnName("role")
@@ -86,9 +65,24 @@ public class GameServerDbContext : DbContext
             entity.Property(e => e.LastLoginAt)
                 .HasColumnName("last_login_at");
             
-            // Indexes
-            entity.HasIndex(e => e.Email).IsUnique().HasDatabaseName("idx_users_email");
-            entity.HasIndex(e => e.Username).IsUnique().HasDatabaseName("idx_users_username");
+            // Override Identity default column names
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserName).HasColumnName("username");
+            entity.Property(e => e.NormalizedUserName).HasColumnName("normalized_username");
+            entity.Property(e => e.Email).HasColumnName("email");
+            entity.Property(e => e.NormalizedEmail).HasColumnName("normalized_email");
+            entity.Property(e => e.EmailConfirmed).HasColumnName("email_confirmed");
+            entity.Property(e => e.PasswordHash).HasColumnName("password_hash");
+            entity.Property(e => e.SecurityStamp).HasColumnName("security_stamp");
+            entity.Property(e => e.ConcurrencyStamp).HasColumnName("concurrency_stamp");
+            entity.Property(e => e.PhoneNumber).HasColumnName("phone_number");
+            entity.Property(e => e.PhoneNumberConfirmed).HasColumnName("phone_number_confirmed");
+            entity.Property(e => e.TwoFactorEnabled).HasColumnName("two_factor_enabled");
+            entity.Property(e => e.LockoutEnd).HasColumnName("lockout_end");
+            entity.Property(e => e.LockoutEnabled).HasColumnName("lockout_enabled");
+            entity.Property(e => e.AccessFailedCount).HasColumnName("access_failed_count");
+            
+            // Custom indexes
             entity.HasIndex(e => e.Role).HasDatabaseName("idx_users_role");
             entity.HasIndex(e => e.IsActive).HasDatabaseName("idx_users_is_active");
             entity.HasIndex(e => e.CreatedAt).HasDatabaseName("idx_users_created_at");
@@ -108,6 +102,59 @@ public class GameServerDbContext : DbContext
                 .WithOne(e => e.User)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configure other Identity tables
+        modelBuilder.Entity<IdentityRole<Guid>>(entity =>
+        {
+            entity.ToTable("roles");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Name).HasColumnName("name");
+            entity.Property(e => e.NormalizedName).HasColumnName("normalized_name");
+            entity.Property(e => e.ConcurrencyStamp).HasColumnName("concurrency_stamp");
+        });
+
+        modelBuilder.Entity<IdentityUserRole<Guid>>(entity =>
+        {
+            entity.ToTable("user_roles");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.RoleId).HasColumnName("role_id");
+        });
+
+        modelBuilder.Entity<IdentityUserClaim<Guid>>(entity =>
+        {
+            entity.ToTable("user_claims");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.ClaimType).HasColumnName("claim_type");
+            entity.Property(e => e.ClaimValue).HasColumnName("claim_value");
+        });
+
+        modelBuilder.Entity<IdentityUserLogin<Guid>>(entity =>
+        {
+            entity.ToTable("user_logins");
+            entity.Property(e => e.LoginProvider).HasColumnName("login_provider");
+            entity.Property(e => e.ProviderKey).HasColumnName("provider_key");
+            entity.Property(e => e.ProviderDisplayName).HasColumnName("provider_display_name");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+        });
+
+        modelBuilder.Entity<IdentityUserToken<Guid>>(entity =>
+        {
+            entity.ToTable("user_tokens");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.LoginProvider).HasColumnName("login_provider");
+            entity.Property(e => e.Name).HasColumnName("name");
+            entity.Property(e => e.Value).HasColumnName("value");
+        });
+
+        modelBuilder.Entity<IdentityRoleClaim<Guid>>(entity =>
+        {
+            entity.ToTable("role_claims");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.RoleId).HasColumnName("role_id");
+            entity.Property(e => e.ClaimType).HasColumnName("claim_type");
+            entity.Property(e => e.ClaimValue).HasColumnName("claim_value");
         });
 
         // ===== ServerType Configuration =====

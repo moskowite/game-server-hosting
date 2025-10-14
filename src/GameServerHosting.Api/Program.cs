@@ -1,4 +1,5 @@
 using GameServerHosting.Api.Data;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Serilog;
@@ -28,6 +29,47 @@ try
     // Configure PostgreSQL with Entity Framework Core
     builder.Services.AddDbContext<GameServerDbContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+    // Configure ASP.NET Core Identity
+    builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
+    {
+        // Password settings
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireUppercase = true;
+        options.Password.RequireNonAlphanumeric = true;
+        options.Password.RequiredLength = 8;
+        options.Password.RequiredUniqueChars = 4;
+
+        // Lockout settings
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.AllowedForNewUsers = true;
+
+        // User settings
+        options.User.RequireUniqueEmail = true;
+        options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+
+        // Sign-in settings
+        options.SignIn.RequireConfirmedEmail = false; // Can be set to true when email service is implemented
+        options.SignIn.RequireConfirmedPhoneNumber = false;
+        options.SignIn.RequireConfirmedAccount = false;
+    })
+    .AddEntityFrameworkStores<GameServerDbContext>()
+    .AddDefaultTokenProviders();
+
+    // Configure cookie settings
+    builder.Services.ConfigureApplicationCookie(options =>
+    {
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Strict;
+        options.ExpireTimeSpan = TimeSpan.FromHours(24);
+        options.SlidingExpiration = true;
+        options.LoginPath = "/api/auth/login";
+        options.LogoutPath = "/api/auth/logout";
+        options.AccessDeniedPath = "/api/auth/access-denied";
+    });
 
     // Configure CORS
     var corsConfig = builder.Configuration.GetSection("Cors");
@@ -154,6 +196,10 @@ try
     }
 
     app.UseHttpsRedirection();
+
+    // Enable Authentication and Authorization
+    app.UseAuthentication();
+    app.UseAuthorization();
 
     // Health check endpoint
     app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
