@@ -15,13 +15,16 @@ namespace GameServerHosting.Api.Controllers;
 public class PaymentsController : ControllerBase
 {
     private readonly IStripeService _stripeService;
+    private readonly IPaymentService _paymentService;
     private readonly ILogger<PaymentsController> _logger;
 
     public PaymentsController(
         IStripeService stripeService,
+        IPaymentService paymentService,
         ILogger<PaymentsController> logger)
     {
         _stripeService = stripeService;
+        _paymentService = paymentService;
         _logger = logger;
     }
 
@@ -152,17 +155,50 @@ public class PaymentsController : ControllerBase
             {
                 case "checkout.session.completed":
                     var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
-                    await HandleCheckoutSessionCompleted(session);
+                    if (session != null)
+                    {
+                        await _paymentService.HandleCheckoutSessionCompletedAsync(session);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Checkout session data is null for event {EventId}", stripeEvent.Id);
+                    }
                     break;
 
                 case "payment_intent.succeeded":
                     var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
-                    await HandlePaymentIntentSucceeded(paymentIntent);
+                    if (paymentIntent != null)
+                    {
+                        await _paymentService.HandlePaymentIntentSucceededAsync(paymentIntent);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Payment intent data is null for event {EventId}", stripeEvent.Id);
+                    }
                     break;
 
                 case "payment_intent.payment_failed":
                     var failedPaymentIntent = stripeEvent.Data.Object as PaymentIntent;
-                    await HandlePaymentIntentFailed(failedPaymentIntent);
+                    if (failedPaymentIntent != null)
+                    {
+                        await _paymentService.HandlePaymentIntentFailedAsync(failedPaymentIntent);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Failed payment intent data is null for event {EventId}", stripeEvent.Id);
+                    }
+                    break;
+
+                case "charge.refunded":
+                    var charge = stripeEvent.Data.Object as Stripe.Charge;
+                    if (charge != null)
+                    {
+                        await _paymentService.HandleChargeRefundedAsync(charge);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Charge data is null for event {EventId}", stripeEvent.Id);
+                    }
                     break;
 
                 default:
@@ -184,65 +220,166 @@ public class PaymentsController : ControllerBase
         }
     }
 
-    private async Task HandleCheckoutSessionCompleted(Stripe.Checkout.Session? session)
+    /// <summary>
+    /// Creates a payment intent for direct payment processing
+    /// </summary>
+    /// <param name="request">The payment intent request</param>
+    /// <returns>The created payment intent with client secret</returns>
+    [HttpPost("create-payment-intent")]
+    [ProducesResponseType(typeof(CreatePaymentIntentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> CreatePaymentIntent([FromBody] CreatePaymentIntentRequest request)
     {
-        if (session == null)
+        try
         {
-            _logger.LogWarning("Checkout session is null");
-            return;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                _logger.LogWarning("Invalid or missing user ID in token");
+                return Unauthorized(new { error = "Invalid user authentication" });
+            }
+
+            if (request.Amount <= 0)
+            {
+                return BadRequest(new { error = "Amount must be greater than 0" });
+            }
+
+            var paymentIntent = await _paymentService.CreatePaymentIntentAsync(
+                userId,
+                request.Amount,
+                request.Currency ?? "usd",
+                request.OrderId,
+                request.Metadata);
+
+            return Ok(new CreatePaymentIntentResponse
+            {
+                PaymentIntentId = paymentIntent.Id,
+                ClientSecret = paymentIntent.ClientSecret,
+                Amount = paymentIntent.Amount,
+                Currency = paymentIntent.Currency,
+                Status = paymentIntent.Status
+            });
         }
-
-        _logger.LogInformation(
-            "Checkout session completed: {SessionId}, PaymentStatus: {PaymentStatus}",
-            session.Id,
-            session.PaymentStatus);
-
-        // TODO: Implement order fulfillment logic
-        // 1. Create an order record in the database
-        // 2. Provision the game server
-        // 3. Send confirmation email to customer
-        // 4. Update user's active subscriptions
-
-        await Task.CompletedTask;
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid request for creating payment intent");
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex, "Stripe error creating payment intent");
+            return StatusCode(500, new { error = "Payment processing error. Please try again." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error creating payment intent");
+            return StatusCode(500, new { error = "An unexpected error occurred" });
+        }
     }
 
-    private async Task HandlePaymentIntentSucceeded(PaymentIntent? paymentIntent)
+    /// <summary>
+    /// Confirms a payment intent
+    /// </summary>
+    /// <param name="request">The payment intent confirmation request</param>
+    /// <returns>The confirmed payment intent</returns>
+    [HttpPost("confirm-payment")]
+    [ProducesResponseType(typeof(ConfirmPaymentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ConfirmPayment([FromBody] ConfirmPaymentRequest request)
     {
-        if (paymentIntent == null)
+        try
         {
-            _logger.LogWarning("Payment intent is null");
-            return;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                _logger.LogWarning("Invalid or missing user ID in token");
+                return Unauthorized(new { error = "Invalid user authentication" });
+            }
+
+            if (string.IsNullOrEmpty(request.PaymentIntentId))
+            {
+                return BadRequest(new { error = "Payment intent ID is required" });
+            }
+
+            var paymentIntent = await _paymentService.ConfirmPaymentAsync(
+                request.PaymentIntentId,
+                request.PaymentMethodId);
+
+            return Ok(new ConfirmPaymentResponse
+            {
+                PaymentIntentId = paymentIntent.Id,
+                Status = paymentIntent.Status,
+                Amount = paymentIntent.Amount,
+                Currency = paymentIntent.Currency
+            });
         }
-
-        _logger.LogInformation(
-            "Payment intent succeeded: {PaymentIntentId}, Amount: {Amount}",
-            paymentIntent.Id,
-            paymentIntent.Amount);
-
-        // TODO: Implement additional payment success logic if needed
-
-        await Task.CompletedTask;
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex, "Stripe error confirming payment");
+            return StatusCode(500, new { error = "Payment processing error. Please try again." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error confirming payment");
+            return StatusCode(500, new { error = "An unexpected error occurred" });
+        }
     }
 
-    private async Task HandlePaymentIntentFailed(PaymentIntent? paymentIntent)
+    /// <summary>
+    /// Refunds a payment
+    /// </summary>
+    /// <param name="request">The refund request</param>
+    /// <returns>The refund details</returns>
+    [HttpPost("refund")]
+    [ProducesResponseType(typeof(RefundPaymentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> RefundPayment([FromBody] RefundPaymentRequest request)
     {
-        if (paymentIntent == null)
+        try
         {
-            _logger.LogWarning("Payment intent is null");
-            return;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                _logger.LogWarning("Invalid or missing user ID in token");
+                return Unauthorized(new { error = "Invalid user authentication" });
+            }
+
+            if (string.IsNullOrEmpty(request.PaymentIntentId))
+            {
+                return BadRequest(new { error = "Payment intent ID is required" });
+            }
+
+            var refund = await _paymentService.RefundPaymentAsync(
+                request.PaymentIntentId,
+                request.Amount,
+                request.Reason);
+
+            return Ok(new RefundPaymentResponse
+            {
+                RefundId = refund.Id,
+                PaymentIntentId = refund.PaymentIntentId,
+                Amount = refund.Amount,
+                Currency = refund.Currency,
+                Status = refund.Status,
+                Reason = refund.Reason
+            });
         }
-
-        _logger.LogWarning(
-            "Payment intent failed: {PaymentIntentId}, LastPaymentError: {Error}",
-            paymentIntent.Id,
-            paymentIntent.LastPaymentError?.Message);
-
-        // TODO: Implement payment failure logic
-        // 1. Notify the customer
-        // 2. Update order status
-        // 3. Log for manual review if needed
-
-        await Task.CompletedTask;
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex, "Stripe error processing refund");
+            return StatusCode(500, new { error = "Refund processing error. Please try again." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error processing refund");
+            return StatusCode(500, new { error = "An unexpected error occurred" });
+        }
     }
 }
 
@@ -314,6 +451,162 @@ public class CheckoutSessionResponse
     /// Customer email address
     /// </summary>
     public string? CustomerEmail { get; set; }
+}
+
+/// <summary>
+/// Request model for creating a payment intent
+/// </summary>
+public class CreatePaymentIntentRequest
+{
+    /// <summary>
+    /// Payment amount in smallest currency unit (e.g., cents)
+    /// </summary>
+    public long Amount { get; set; }
+
+    /// <summary>
+    /// Currency code (e.g., "usd", "eur")
+    /// </summary>
+    public string? Currency { get; set; }
+
+    /// <summary>
+    /// Associated order ID (optional)
+    /// </summary>
+    public Guid? OrderId { get; set; }
+
+    /// <summary>
+    /// Additional metadata
+    /// </summary>
+    public Dictionary<string, string>? Metadata { get; set; }
+}
+
+/// <summary>
+/// Response model for creating a payment intent
+/// </summary>
+public class CreatePaymentIntentResponse
+{
+    /// <summary>
+    /// The payment intent ID
+    /// </summary>
+    public string PaymentIntentId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Client secret for confirming the payment
+    /// </summary>
+    public string? ClientSecret { get; set; }
+
+    /// <summary>
+    /// Payment amount in smallest currency unit
+    /// </summary>
+    public long Amount { get; set; }
+
+    /// <summary>
+    /// Currency code
+    /// </summary>
+    public string Currency { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Payment intent status
+    /// </summary>
+    public string Status { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request model for confirming a payment
+/// </summary>
+public class ConfirmPaymentRequest
+{
+    /// <summary>
+    /// The payment intent ID to confirm
+    /// </summary>
+    public string PaymentIntentId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The payment method ID (optional if already attached)
+    /// </summary>
+    public string? PaymentMethodId { get; set; }
+}
+
+/// <summary>
+/// Response model for confirming a payment
+/// </summary>
+public class ConfirmPaymentResponse
+{
+    /// <summary>
+    /// The payment intent ID
+    /// </summary>
+    public string PaymentIntentId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Payment status after confirmation
+    /// </summary>
+    public string Status { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Payment amount
+    /// </summary>
+    public long Amount { get; set; }
+
+    /// <summary>
+    /// Currency code
+    /// </summary>
+    public string Currency { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request model for refunding a payment
+/// </summary>
+public class RefundPaymentRequest
+{
+    /// <summary>
+    /// The payment intent ID to refund
+    /// </summary>
+    public string PaymentIntentId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Amount to refund in smallest currency unit (null for full refund)
+    /// </summary>
+    public long? Amount { get; set; }
+
+    /// <summary>
+    /// Reason for the refund
+    /// </summary>
+    public string? Reason { get; set; }
+}
+
+/// <summary>
+/// Response model for refunding a payment
+/// </summary>
+public class RefundPaymentResponse
+{
+    /// <summary>
+    /// The refund ID
+    /// </summary>
+    public string RefundId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The payment intent ID that was refunded
+    /// </summary>
+    public string? PaymentIntentId { get; set; }
+
+    /// <summary>
+    /// Refund amount
+    /// </summary>
+    public long Amount { get; set; }
+
+    /// <summary>
+    /// Currency code
+    /// </summary>
+    public string Currency { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Refund status
+    /// </summary>
+    public string Status { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Reason for the refund
+    /// </summary>
+    public string? Reason { get; set; }
 }
 
 #endregion
