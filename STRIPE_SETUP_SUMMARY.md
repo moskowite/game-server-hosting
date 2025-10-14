@@ -230,5 +230,15 @@ Tasks completed:
 - ✅ Add payment controller with endpoints
 - ✅ Document API key setup process
 - ✅ Provide webhook configuration guide
+- ✅ Fix CI build failures (property name correction)
 
 **Note:** The actual Stripe account creation and API key retrieval must be done manually by following the guide in `docs/setup/stripe-setup.md`.
+
+## CI Fixes Applied
+
+### Build Failure Resolution
+**Issue**: `'ServerPlan' does not contain a definition for 'MonthlyPrice'`
+**Fix**: Changed `StripeService.cs` line 63 from `serverPlan.MonthlyPrice` to `serverPlan.Price`
+**Details**: See `docs/troubleshooting/ci-fixes.md` for complete analysis
+
+The `ServerPlan` entity uses a generic `Price` property that works for all billing cycles (hourly, monthly, quarterly, annual), not a specific `MonthlyPrice` property.

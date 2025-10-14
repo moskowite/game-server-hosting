@@ -60,7 +60,7 @@ public class StripeService : IStripeService
                                 Name = $"{serverPlan.ServerType?.Name} - {serverPlan.Name}",
                                 Description = serverPlan.Description,
                             },
-                            UnitAmount = (long)(serverPlan.MonthlyPrice * 100), // Convert to cents
+                            UnitAmount = (long)(serverPlan.Price * 100), // Convert to cents
                         },
                         Quantity = quantity,
                     },
