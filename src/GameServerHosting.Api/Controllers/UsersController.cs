@@ -3,6 +3,8 @@ using GameServerHosting.Shared.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using GameServerHosting.Api.Data;
 
 namespace GameServerHosting.Api.Controllers;
 
@@ -17,13 +19,16 @@ public class UsersController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<UsersController> _logger;
+    private readonly GameServerDbContext _context;
 
     public UsersController(
         UserManager<ApplicationUser> userManager,
-        ILogger<UsersController> logger)
+        ILogger<UsersController> logger,
+        GameServerDbContext context)
     {
         _userManager = userManager;
         _logger = logger;
+        _context = context;
     }
 
     /// <summary>
@@ -275,6 +280,124 @@ public class UsersController : ControllerBase
         {
             _logger.LogError(ex, "Error deleting user account");
             return StatusCode(500, new { message = "An error occurred while deleting account" });
+        }
+    }
+
+    /// <summary>
+    /// Get current user's preferences
+    /// </summary>
+    /// <returns>User preferences</returns>
+    [HttpGet("preferences")]
+    [ProducesResponseType(typeof(UserPreferencesDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<UserPreferencesDto>> GetPreferences()
+    {
+        try
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("Unauthorized preferences access attempt");
+                return Unauthorized(new { message = "User not authenticated" });
+            }
+
+            var userGuid = Guid.Parse(userId);
+            var preferences = await _context.UserPreferences
+                .FirstOrDefaultAsync(p => p.UserId == userGuid);
+
+            // If no preferences exist, create default ones
+            if (preferences == null)
+            {
+                preferences = new UserPreferences
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userGuid,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _context.UserPreferences.Add(preferences);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Created default preferences for user {UserId}", userId);
+            }
+
+            var dto = new UserPreferencesDto
+            {
+                EmailPromotional = preferences.EmailPromotional,
+                EmailOrderUpdates = preferences.EmailOrderUpdates,
+                EmailServerAlerts = preferences.EmailServerAlerts,
+                EmailNewsletter = preferences.EmailNewsletter,
+                NotificationsBrowser = preferences.NotificationsBrowser,
+                NotificationsServerOffline = preferences.NotificationsServerOffline,
+                NotificationsResourceAlerts = preferences.NotificationsResourceAlerts,
+                NotificationsPaymentDue = preferences.NotificationsPaymentDue,
+                NotificationsSecurityAlerts = preferences.NotificationsSecurityAlerts
+            };
+
+            return Ok(dto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving user preferences");
+            return StatusCode(500, new { message = "An error occurred while retrieving preferences" });
+        }
+    }
+
+    /// <summary>
+    /// Update current user's preferences
+    /// </summary>
+    /// <param name="dto">Updated preferences</param>
+    /// <returns>Updated preferences</returns>
+    [HttpPut("preferences")]
+    [ProducesResponseType(typeof(UserPreferencesDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<UserPreferencesDto>> UpdatePreferences([FromBody] UserPreferencesDto dto)
+    {
+        try
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("Unauthorized preferences update attempt");
+                return Unauthorized(new { message = "User not authenticated" });
+            }
+
+            var userGuid = Guid.Parse(userId);
+            var preferences = await _context.UserPreferences
+                .FirstOrDefaultAsync(p => p.UserId == userGuid);
+
+            // If no preferences exist, create new ones
+            if (preferences == null)
+            {
+                preferences = new UserPreferences
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userGuid,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.UserPreferences.Add(preferences);
+            }
+
+            // Update preferences
+            preferences.EmailPromotional = dto.EmailPromotional;
+            preferences.EmailOrderUpdates = dto.EmailOrderUpdates;
+            preferences.EmailServerAlerts = dto.EmailServerAlerts;
+            preferences.EmailNewsletter = dto.EmailNewsletter;
+            preferences.NotificationsBrowser = dto.NotificationsBrowser;
+            preferences.NotificationsServerOffline = dto.NotificationsServerOffline;
+            preferences.NotificationsResourceAlerts = dto.NotificationsResourceAlerts;
+            preferences.NotificationsPaymentDue = dto.NotificationsPaymentDue;
+            preferences.NotificationsSecurityAlerts = dto.NotificationsSecurityAlerts;
+            preferences.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Preferences updated successfully for user {UserId}", userId);
+            return Ok(dto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating user preferences");
+            return StatusCode(500, new { message = "An error occurred while updating preferences" });
         }
     }
 }
