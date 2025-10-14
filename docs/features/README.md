@@ -23,6 +23,11 @@ The main user dashboard and control panel.
 
 - **[Dashboard](dashboard.md)** - Dashboard features and layout
 
+### Server Provisioning
+Automated game server provisioning system with cloud provider integration.
+
+- **[Server Provisioning Design](server-provisioning.md)** - Complete system design and implementation guide
+
 ## Documentation Structure
 
 Each feature should have:
