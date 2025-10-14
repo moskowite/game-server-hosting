@@ -1,0 +1,119 @@
+### Server Plans API Tests
+
+@baseUrl = https://localhost:5001
+@token = YOUR_JWT_TOKEN_HERE
+@serverTypeId = YOUR_SERVER_TYPE_ID_HERE
+@serverPlanId = YOUR_SERVER_PLAN_ID_HERE
+
+### Get all server plans (public)
+GET {{baseUrl}}/api/server-plans
+Content-Type: application/json
+
+### Get all active server plans only
+GET {{baseUrl}}/api/server-plans?isActive=true
+Content-Type: application/json
+
+### Get specific server plan by ID
+GET {{baseUrl}}/api/server-plans/{{serverPlanId}}
+Content-Type: application/json
+
+### Get server plans by server type ID
+GET {{baseUrl}}/api/server-plans/by-type/{{serverTypeId}}
+Content-Type: application/json
+
+### Get active server plans by server type ID
+GET {{baseUrl}}/api/server-plans/by-type/{{serverTypeId}}?isActive=true
+Content-Type: application/json
+
+### Create a new server plan - Hourly (Admin only)
+POST {{baseUrl}}/api/server-plans
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "serverTypeId": "{{serverTypeId}}",
+  "name": "Hourly Plan",
+  "billingCycle": "Hourly",
+  "price": 0.50,
+  "currency": "USD",
+  "durationHours": 1,
+  "discountPercentage": 0,
+  "isActive": true,
+  "displayOrder": 1,
+  "description": "Pay as you go - perfect for short-term usage or testing"
+}
+
+### Create a new server plan - Monthly (Admin only)
+POST {{baseUrl}}/api/server-plans
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "serverTypeId": "{{serverTypeId}}",
+  "name": "Monthly Plan",
+  "billingCycle": "Monthly",
+  "price": 15.00,
+  "currency": "USD",
+  "durationHours": 720,
+  "discountPercentage": 10,
+  "isActive": true,
+  "displayOrder": 2,
+  "description": "Best value - save 10% compared to hourly rate. Ideal for long-term projects."
+}
+
+### Create a new server plan - Quarterly (Admin only)
+POST {{baseUrl}}/api/server-plans
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "serverTypeId": "{{serverTypeId}}",
+  "name": "Quarterly Plan",
+  "billingCycle": "Quarterly",
+  "price": 40.00,
+  "currency": "USD",
+  "durationHours": 2160,
+  "discountPercentage": 20,
+  "isActive": true,
+  "displayOrder": 3,
+  "description": "Maximum savings - save 20% compared to hourly rate. Perfect for dedicated servers."
+}
+
+### Create a new server plan - Annual (Admin only)
+POST {{baseUrl}}/api/server-plans
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "serverTypeId": "{{serverTypeId}}",
+  "name": "Annual Plan",
+  "billingCycle": "Annual",
+  "price": 150.00,
+  "currency": "USD",
+  "durationHours": 8760,
+  "discountPercentage": 25,
+  "isActive": true,
+  "displayOrder": 4,
+  "description": "Ultimate savings - save 25% compared to hourly rate. Best for production environments."
+}
+
+### Update a server plan (Admin only)
+PUT {{baseUrl}}/api/server-plans/{{serverPlanId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Monthly Premium Plan",
+  "billingCycle": "Monthly",
+  "price": 20.00,
+  "currency": "USD",
+  "durationHours": 720,
+  "discountPercentage": 15,
+  "isActive": true,
+  "displayOrder": 2,
+  "description": "Premium monthly plan with enhanced support and 15% discount"
+}
+
+### Delete a server plan (Admin only)
+DELETE {{baseUrl}}/api/server-plans/{{serverPlanId}}
+Authorization: Bearer {{token}}
