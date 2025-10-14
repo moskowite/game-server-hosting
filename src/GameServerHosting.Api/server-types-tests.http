@@ -1,0 +1,84 @@
+### Server Types API Tests
+
+@baseUrl = https://localhost:5001
+@token = YOUR_JWT_TOKEN_HERE
+
+### Get all server types (public)
+GET {{baseUrl}}/api/server-types
+Content-Type: application/json
+
+### Get all active server types only
+GET {{baseUrl}}/api/server-types?isActive=true
+Content-Type: application/json
+
+### Get server types by game name
+GET {{baseUrl}}/api/server-types?gameName=Minecraft
+Content-Type: application/json
+
+### Get specific server type by ID
+GET {{baseUrl}}/api/server-types/YOUR_SERVER_TYPE_ID_HERE
+Content-Type: application/json
+
+### Create a new server type (Admin only)
+POST {{baseUrl}}/api/server-types
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Minecraft Standard",
+  "gameName": "Minecraft",
+  "description": "A standard Minecraft server with 2 CPU cores and 4GB RAM, suitable for up to 20 players",
+  "cpuCores": 2,
+  "ramMb": 4096,
+  "diskGb": 20,
+  "maxPlayers": 20,
+  "hourlyPrice": 0.50,
+  "monthlyPrice": 15.00,
+  "dockerImage": "minecraft/minecraft-server:latest",
+  "defaultConfig": "{\"difficulty\":\"normal\",\"gamemode\":\"survival\",\"pvp\":true}",
+  "isActive": true
+}
+
+### Create another server type (Admin only)
+POST {{baseUrl}}/api/server-types
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "CS:GO Competitive",
+  "gameName": "CS:GO",
+  "description": "High-performance CS:GO server optimized for competitive play with 4 CPU cores and 8GB RAM",
+  "cpuCores": 4,
+  "ramMb": 8192,
+  "diskGb": 50,
+  "maxPlayers": 32,
+  "hourlyPrice": 1.00,
+  "monthlyPrice": 30.00,
+  "dockerImage": "csgo/csgo-server:latest",
+  "defaultConfig": "{\"tickrate\":128,\"gamemode\":\"competitive\"}",
+  "isActive": true
+}
+
+### Update a server type (Admin only)
+PUT {{baseUrl}}/api/server-types/YOUR_SERVER_TYPE_ID_HERE
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Minecraft Premium",
+  "gameName": "Minecraft",
+  "description": "Premium Minecraft server with enhanced resources for up to 50 players",
+  "cpuCores": 4,
+  "ramMb": 8192,
+  "diskGb": 40,
+  "maxPlayers": 50,
+  "hourlyPrice": 1.20,
+  "monthlyPrice": 35.00,
+  "dockerImage": "minecraft/minecraft-server:latest",
+  "defaultConfig": "{\"difficulty\":\"hard\",\"gamemode\":\"survival\",\"pvp\":true,\"hardcore\":false}",
+  "isActive": true
+}
+
+### Delete a server type (Admin only)
+DELETE {{baseUrl}}/api/server-types/YOUR_SERVER_TYPE_ID_HERE
+Authorization: Bearer {{token}}
