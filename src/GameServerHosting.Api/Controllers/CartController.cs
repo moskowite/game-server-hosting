@@ -137,7 +137,6 @@ public class CartController : ControllerBase
                 .FirstOrDefaultAsync(ci => ci.UserId == userGuid && ci.ServerPlanId == request.ServerPlanId);
 
             CartItem cartItem;
-            bool isNew = false;
 
             if (existingCartItem != null)
             {
@@ -163,7 +162,6 @@ public class CartController : ControllerBase
                     UpdatedAt = DateTime.UtcNow
                 };
                 _context.CartItems.Add(cartItem);
-                isNew = true;
                 _logger.LogInformation("Added new cart item for user {UserId}, plan {PlanId}", userId, request.ServerPlanId);
             }
 

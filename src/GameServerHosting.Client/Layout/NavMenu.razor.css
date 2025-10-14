@@ -65,6 +65,15 @@
     color: white;
 }
 
+.nav-link .badge {
+    font-size: 0.65rem;
+    padding: 0.25rem 0.4rem;
+}
+
+.nav-link.position-relative .badge {
+    margin-left: 0;
+}
+
 @media (min-width: 641px) {
     .navbar-toggler {
         display: none;
