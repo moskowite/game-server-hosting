@@ -155,22 +155,50 @@ public class PaymentsController : ControllerBase
             {
                 case "checkout.session.completed":
                     var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
-                    await _paymentService.HandleCheckoutSessionCompletedAsync(session);
+                    if (session != null)
+                    {
+                        await _paymentService.HandleCheckoutSessionCompletedAsync(session);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Checkout session data is null for event {EventId}", stripeEvent.Id);
+                    }
                     break;
 
                 case "payment_intent.succeeded":
                     var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
-                    await _paymentService.HandlePaymentIntentSucceededAsync(paymentIntent);
+                    if (paymentIntent != null)
+                    {
+                        await _paymentService.HandlePaymentIntentSucceededAsync(paymentIntent);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Payment intent data is null for event {EventId}", stripeEvent.Id);
+                    }
                     break;
 
                 case "payment_intent.payment_failed":
                     var failedPaymentIntent = stripeEvent.Data.Object as PaymentIntent;
-                    await _paymentService.HandlePaymentIntentFailedAsync(failedPaymentIntent);
+                    if (failedPaymentIntent != null)
+                    {
+                        await _paymentService.HandlePaymentIntentFailedAsync(failedPaymentIntent);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Failed payment intent data is null for event {EventId}", stripeEvent.Id);
+                    }
                     break;
 
                 case "charge.refunded":
                     var charge = stripeEvent.Data.Object as Stripe.Charge;
-                    await _paymentService.HandleChargeRefundedAsync(charge);
+                    if (charge != null)
+                    {
+                        await _paymentService.HandleChargeRefundedAsync(charge);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Charge data is null for event {EventId}", stripeEvent.Id);
+                    }
                     break;
 
                 default:

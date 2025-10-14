@@ -289,7 +289,7 @@ public class PaymentService : IPaymentService
                     Status = session.PaymentStatus == "paid" ? OrderStatus.Completed : OrderStatus.Pending,
                     TotalAmount = serverPlan.Price * quantity,
                     Currency = session.Currency?.ToUpper() ?? "USD",
-                    PaymentMethod = PaymentMethod.Stripe,
+                    PaymentMethod = Shared.Enums.PaymentMethod.Stripe,
                     PaymentTransactionId = session.Id,
                     PaymentDate = session.PaymentStatus == "paid" ? DateTime.UtcNow : null,
                     CreatedAt = DateTime.UtcNow,
@@ -538,9 +538,9 @@ public class PaymentService : IPaymentService
 
             // Update payment details
             payment.Amount = paymentIntent.Amount / 100m; // Convert from cents to dollars
-            payment.Currency = paymentIntent.Currency.ToUpper();
-            payment.Status = MapPaymentIntentStatus(paymentIntent.Status);
-            payment.PaymentMethod = PaymentMethod.Stripe;
+            payment.Currency = (paymentIntent.Currency ?? "usd").ToUpper();
+            payment.Status = MapPaymentIntentStatus(paymentIntent.Status ?? "unknown");
+            payment.PaymentMethod = Shared.Enums.PaymentMethod.Stripe;
             payment.UpdatedAt = DateTime.UtcNow;
 
             // Update completion timestamp if succeeded
@@ -559,7 +559,11 @@ public class PaymentService : IPaymentService
             // Store payment method details if available
             if (paymentIntent.PaymentMethod != null)
             {
-                var paymentMethodId = paymentIntent.PaymentMethod;
+                // PaymentIntent.PaymentMethod can be either a string ID or an expanded object
+                string? paymentMethodId = paymentIntent.PaymentMethod is string pmId 
+                    ? pmId 
+                    : (paymentIntent.PaymentMethod as Stripe.PaymentMethod)?.Id;
+                
                 if (!string.IsNullOrEmpty(paymentMethodId))
                 {
                     try
@@ -567,7 +571,7 @@ public class PaymentService : IPaymentService
                         var paymentMethodService = new PaymentMethodService();
                         var paymentMethod = await paymentMethodService.GetAsync(paymentMethodId);
                         
-                        if (paymentMethod.Card != null)
+                        if (paymentMethod?.Card != null)
                         {
                             payment.PaymentIdentifier = $"**** {paymentMethod.Card.Last4}";
                         }
