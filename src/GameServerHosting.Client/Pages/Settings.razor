@@ -26,28 +26,28 @@
         <ul class="nav nav-tabs settings-tabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link @(activeTab == "profile" ? "active" : "")" 
-                        @onclick="() => SetActiveTab(\"profile\")" 
+                        @onclick='@(() => SetActiveTab("profile"))' 
                         type="button">
                     <i class="bi bi-person-circle"></i> Profile
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link @(activeTab == "security" ? "active" : "")" 
-                        @onclick="() => SetActiveTab(\"security\")" 
+                        @onclick='@(() => SetActiveTab("security"))' 
                         type="button">
                     <i class="bi bi-shield-lock"></i> Security
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link @(activeTab == "email" ? "active" : "")" 
-                        @onclick="() => SetActiveTab(\"email\")" 
+                        @onclick='@(() => SetActiveTab("email"))' 
                         type="button">
                     <i class="bi bi-envelope"></i> Email Preferences
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link @(activeTab == "notifications" ? "active" : "")" 
-                        @onclick="() => SetActiveTab(\"notifications\")" 
+                        @onclick='@(() => SetActiveTab("notifications"))' 
                         type="button">
                     <i class="bi bi-bell"></i> Notifications
                 </button>
@@ -258,7 +258,7 @@
                                     <input class="form-check-input" type="checkbox" role="switch" 
                                            id="emailPromotional" 
                                            @bind="preferences.EmailPromotional" 
-                                           @onchange="() => SavePreferences()">
+                                           @bind:after="SavePreferences">
                                 </div>
                             </div>
 
@@ -276,7 +276,7 @@
                                     <input class="form-check-input" type="checkbox" role="switch" 
                                            id="emailOrderUpdates" 
                                            @bind="preferences.EmailOrderUpdates" 
-                                           @onchange="() => SavePreferences()">
+                                           @bind:after="SavePreferences">
                                 </div>
                             </div>
 
@@ -294,7 +294,7 @@
                                     <input class="form-check-input" type="checkbox" role="switch" 
                                            id="emailServerAlerts" 
                                            @bind="preferences.EmailServerAlerts" 
-                                           @onchange="() => SavePreferences()">
+                                           @bind:after="SavePreferences">
                                 </div>
                             </div>
 
@@ -312,7 +312,7 @@
                                     <input class="form-check-input" type="checkbox" role="switch" 
                                            id="emailNewsletter" 
                                            @bind="preferences.EmailNewsletter" 
-                                           @onchange="() => SavePreferences()">
+                                           @bind:after="SavePreferences">
                                 </div>
                             </div>
                         </div>
@@ -354,7 +354,7 @@
                                     <input class="form-check-input" type="checkbox" role="switch" 
                                            id="notificationsBrowser" 
                                            @bind="preferences.NotificationsBrowser" 
-                                           @onchange="() => SavePreferences()">
+                                           @bind:after="SavePreferences">
                                 </div>
                             </div>
 
@@ -372,7 +372,7 @@
                                     <input class="form-check-input" type="checkbox" role="switch" 
                                            id="notificationsServerOffline" 
                                            @bind="preferences.NotificationsServerOffline" 
-                                           @onchange="() => SavePreferences()">
+                                           @bind:after="SavePreferences">
                                 </div>
                             </div>
 
@@ -390,7 +390,7 @@
                                     <input class="form-check-input" type="checkbox" role="switch" 
                                            id="notificationsResourceAlerts" 
                                            @bind="preferences.NotificationsResourceAlerts" 
-                                           @onchange="() => SavePreferences()">
+                                           @bind:after="SavePreferences">
                                 </div>
                             </div>
 
@@ -408,7 +408,7 @@
                                     <input class="form-check-input" type="checkbox" role="switch" 
                                            id="notificationsPaymentDue" 
                                            @bind="preferences.NotificationsPaymentDue" 
-                                           @onchange="() => SavePreferences()">
+                                           @bind:after="SavePreferences">
                                 </div>
                             </div>
 
@@ -426,7 +426,7 @@
                                     <input class="form-check-input" type="checkbox" role="switch" 
                                            id="notificationsSecurityAlerts" 
                                            @bind="preferences.NotificationsSecurityAlerts" 
-                                           @onchange="() => SavePreferences()">
+                                           @bind:after="SavePreferences">
                                 </div>
                             </div>
                         </div>
