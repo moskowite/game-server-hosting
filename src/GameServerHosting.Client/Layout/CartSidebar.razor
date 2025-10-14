@@ -1,0 +1,176 @@
+@using GameServerHosting.Client.Models
+@using GameServerHosting.Client.Services
+@inject CartService CartService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<div class="cart-sidebar-wrapper">
+    <button class="cart-toggle-btn" @onclick="ToggleSidebar" title="View Cart">
+        <span class="bi bi-cart3"></span>
+        @if (CartService.ItemCount > 0)
+        {
+            <span class="cart-badge">@CartService.ItemCount</span>
+        }
+    </button>
+
+    @if (isOpen)
+    {
+        <div class="cart-overlay" @onclick="CloseSidebar"></div>
+        
+        <div class="cart-sidebar @(isOpen ? "open" : "")">
+            <div class="sidebar-header">
+                <h3 class="sidebar-title">
+                    <span class="bi bi-cart3"></span>
+                    Shopping Cart
+                    @if (CartService.ItemCount > 0)
+                    {
+                        <span class="item-count">(@CartService.ItemCount)</span>
+                    }
+                </h3>
+                <button class="close-btn" @onclick="CloseSidebar">
+                    <span class="bi bi-x-lg"></span>
+                </button>
+            </div>
+
+            <div class="sidebar-content">
+                @if (!CartService.CartItems.Any())
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <span class="bi bi-cart-x"></span>
+                        </div>
+                        <p>Your cart is empty</p>
+                        <button class="btn btn-primary btn-sm" @onclick="NavigateToServers">
+                            Browse Servers
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="cart-items-list">
+                        @foreach (var item in CartService.CartItems)
+                        {
+                            <div class="sidebar-cart-item">
+                                <div class="item-icon">
+                                    <span class="bi @GetServerIcon(item.ServerPlan?.Name ?? "")"></span>
+                                </div>
+                                <div class="item-info">
+                                    <h4 class="item-name">@item.ServerPlan?.Name</h4>
+                                    <div class="item-meta">
+                                        <span class="quantity">Qty: @item.Quantity</span>
+                                        <span class="price">@FormatPrice(item.Price)</span>
+                                    </div>
+                                </div>
+                                <button class="btn-remove-small" 
+                                        @onclick="() => RemoveItem(item)"
+                                        title="Remove">
+                                    <span class="bi bi-x"></span>
+                                </button>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="sidebar-summary">
+                        <div class="summary-row">
+                            <span class="label">Subtotal:</span>
+                            <span class="value">@FormatPrice(CartService.TotalPrice)</span>
+                        </div>
+                        <div class="summary-note">
+                            Taxes and shipping calculated at checkout
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (CartService.CartItems.Any())
+            {
+                <div class="sidebar-footer">
+                    <button class="btn btn-primary btn-block" @onclick="ViewCart">
+                        <span class="bi bi-cart-check"></span>
+                        View Cart
+                    </button>
+                    <button class="btn btn-success btn-block" @onclick="Checkout">
+                        <span class="bi bi-credit-card"></span>
+                        Checkout
+                    </button>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public bool isOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> isOpenChanged { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CartService.InitializeAsync();
+        CartService.OnCartUpdated += OnCartUpdated;
+    }
+
+    private void OnCartUpdated(CartNotification notification)
+    {
+        StateHasChanged();
+    }
+
+    private async Task ToggleSidebar()
+    {
+        isOpen = !isOpen;
+        await isOpenChanged.InvokeAsync(isOpen);
+    }
+
+    private async Task CloseSidebar()
+    {
+        isOpen = false;
+        await isOpenChanged.InvokeAsync(isOpen);
+    }
+
+    private async Task RemoveItem(CartItemDto item)
+    {
+        await CartService.RemoveItemAsync(item.Id);
+    }
+
+    private void ViewCart()
+    {
+        NavigationManager.NavigateTo("/cart");
+        _ = CloseSidebar();
+    }
+
+    private void Checkout()
+    {
+        NavigationManager.NavigateTo("/checkout");
+        _ = CloseSidebar();
+    }
+
+    private void NavigateToServers()
+    {
+        NavigationManager.NavigateTo("/servers");
+        _ = CloseSidebar();
+    }
+
+    private string GetServerIcon(string planName)
+    {
+        var lowerName = planName.ToLower();
+        if (lowerName.Contains("minecraft")) return "bi-square-fill";
+        if (lowerName.Contains("rust")) return "bi-hammer";
+        if (lowerName.Contains("ark")) return "bi-egg";
+        if (lowerName.Contains("valheim")) return "bi-shield-fill";
+        if (lowerName.Contains("terraria")) return "bi-tree-fill";
+        if (lowerName.Contains("counter") || lowerName.Contains("cs:go")) return "bi-crosshair";
+        return "bi-server";
+    }
+
+    private string FormatPrice(decimal price)
+    {
+        return $"${price:F2}";
+    }
+
+    public void Dispose()
+    {
+        CartService.OnCartUpdated -= OnCartUpdated;
+    }
+}
