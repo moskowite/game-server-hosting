@@ -1,7 +1,12 @@
+using System.Text;
 using GameServerHosting.Api.Data;
+using GameServerHosting.Api.Models;
+using GameServerHosting.Api.Services;
 using GameServerHosting.Shared.Entities;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using Serilog.Events;
@@ -31,6 +36,14 @@ try
     builder.Services.AddDbContext<GameServerDbContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+    // Configure JWT Settings
+    var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+    builder.Services.Configure<JwtSettings>(jwtSettings);
+    
+    var jwtSecretKey = jwtSettings.GetValue<string>("SecretKey") ?? throw new InvalidOperationException("JWT SecretKey is not configured");
+    var jwtIssuer = jwtSettings.GetValue<string>("Issuer") ?? "GameServerHosting.Api";
+    var jwtAudience = jwtSettings.GetValue<string>("Audience") ?? "GameServerHosting.Client";
+
     // Configure ASP.NET Core Identity
     builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
     {
@@ -59,18 +72,55 @@ try
     .AddEntityFrameworkStores<GameServerDbContext>()
     .AddDefaultTokenProviders();
 
-    // Configure cookie settings
-    builder.Services.ConfigureApplicationCookie(options =>
+    // Configure JWT Authentication
+    builder.Services.AddAuthentication(options =>
     {
-        options.Cookie.HttpOnly = true;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-        options.Cookie.SameSite = SameSiteMode.Strict;
-        options.ExpireTimeSpan = TimeSpan.FromHours(24);
-        options.SlidingExpiration = true;
-        options.LoginPath = "/api/auth/login";
-        options.LogoutPath = "/api/auth/logout";
-        options.AccessDeniedPath = "/api/auth/access-denied";
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.SaveToken = true;
+        options.RequireHttpsMetadata = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)),
+            ClockSkew = TimeSpan.Zero
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+                {
+                    context.Response.Headers.Append("Token-Expired", "true");
+                }
+                return Task.CompletedTask;
+            },
+            OnMessageReceived = context =>
+            {
+                // Support token from query string for SignalR connections
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
+
+    // Register JWT Token Service
+    builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
     // Configure CORS
     var corsConfig = builder.Configuration.GetSection("Cors");
@@ -123,6 +173,9 @@ try
             }
         });
     });
+
+    // Add Controllers
+    builder.Services.AddControllers();
 
     // Configure Swagger/OpenAPI
     builder.Services.AddEndpointsApiExplorer();
@@ -201,6 +254,9 @@ try
     // Enable Authentication and Authorization
     app.UseAuthentication();
     app.UseAuthorization();
+
+    // Map Controllers
+    app.MapControllers();
 
     // Health check endpoint
     app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
