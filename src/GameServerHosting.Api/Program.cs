@@ -140,6 +140,9 @@ try
     // Register Payment Service
     builder.Services.AddScoped<IPaymentService, PaymentService>();
 
+    // Register Invoice Service
+    builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+
     // Configure CORS
     var corsConfig = builder.Configuration.GetSection("Cors");
     var policyName = corsConfig.GetValue<string>("PolicyName") ?? "GameServerHostingPolicy";

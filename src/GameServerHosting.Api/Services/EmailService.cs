@@ -51,6 +51,16 @@ public class EmailService : IEmailService
         await SendEmailAsync(email, subject, htmlContent, plainTextContent);
     }
 
+    /// <inheritdoc />
+    public async Task SendOrderConfirmationEmailAsync(string email, string userName, string orderNumber, OrderConfirmationDetails orderDetails)
+    {
+        var subject = $"Order Confirmation - {orderNumber}";
+        var htmlContent = GenerateOrderConfirmationTemplate(userName, orderDetails);
+        var plainTextContent = GenerateOrderConfirmationPlainText(userName, orderDetails);
+
+        await SendEmailAsync(email, subject, htmlContent, plainTextContent);
+    }
+
     /// <summary>
     /// Sends an email using the configured provider
     /// </summary>
@@ -333,5 +343,317 @@ public class EmailService : IEmailService
     </div>
 </body>
 </html>";
+    }
+
+    /// <summary>
+    /// Generates HTML email template for order confirmation
+    /// </summary>
+    private string GenerateOrderConfirmationTemplate(string userName, OrderConfirmationDetails orderDetails)
+    {
+        var itemsHtml = string.Join("", orderDetails.Items.Select(item => $@"
+            <tr>
+                <td style=""padding: 15px; border-bottom: 1px solid #eee;"">
+                    <strong>{item.Name}</strong>
+                    {(!string.IsNullOrEmpty(item.Description) ? $"<br><small style=\"color: #666;\">{item.Description}</small>" : "")}
+                </td>
+                <td style=""padding: 15px; border-bottom: 1px solid #eee; text-align: center;"">{item.Quantity}</td>
+                <td style=""padding: 15px; border-bottom: 1px solid #eee; text-align: right;"">${item.Price:F2}</td>
+                <td style=""padding: 15px; border-bottom: 1px solid #eee; text-align: right;"">${item.Total:F2}</td>
+            </tr>"));
+
+        var dashboardUrl = $"{_emailSettings.BaseUrl}/dashboard";
+        var orderUrl = $"{_emailSettings.BaseUrl}/orders/{orderDetails.OrderId}";
+
+        return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=""utf-8"">
+    <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }}
+        .email-container {{
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }}
+        .header {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }}
+        .header h1 {{
+            margin: 0 0 10px 0;
+            font-size: 32px;
+        }}
+        .header .checkmark {{
+            font-size: 48px;
+            margin-bottom: 10px;
+        }}
+        .content {{
+            padding: 30px;
+        }}
+        .order-info {{
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }}
+        .order-info-row {{
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }}
+        .order-info-row:last-child {{
+            border-bottom: none;
+        }}
+        .items-table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+        }}
+        .items-table th {{
+            background: #f9f9f9;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: bold;
+            border-bottom: 2px solid #ddd;
+        }}
+        .items-table th:nth-child(2),
+        .items-table th:nth-child(3),
+        .items-table th:nth-child(4) {{
+            text-align: right;
+        }}
+        .total-section {{
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }}
+        .total-row {{
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+        }}
+        .total-row.final {{
+            border-top: 2px solid #667eea;
+            margin-top: 10px;
+            padding-top: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+        }}
+        .button {{
+            display: inline-block;
+            padding: 14px 35px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 10px;
+            font-weight: bold;
+            text-align: center;
+        }}
+        .button-secondary {{
+            background: white;
+            color: #667eea !important;
+            border: 2px solid #667eea;
+        }}
+        .next-steps {{
+            background: #e8f4fd;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            margin: 20px 0;
+        }}
+        .next-steps h3 {{
+            margin-top: 0;
+            color: #1976D2;
+        }}
+        .step {{
+            padding: 10px 0;
+            border-bottom: 1px solid #ccc;
+        }}
+        .step:last-child {{
+            border-bottom: none;
+        }}
+        .footer {{
+            background: #f9f9f9;
+            padding: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }}
+        .support-box {{
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }}
+        @media only screen and (max-width: 600px) {{
+            body {{
+                padding: 10px;
+            }}
+            .header {{
+                padding: 30px 20px;
+            }}
+            .content {{
+                padding: 20px;
+            }}
+            .button {{
+                display: block;
+                margin: 10px 0;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class=""email-container"">
+        <div class=""header"">
+            <div class=""checkmark"">✓</div>
+            <h1>Order Confirmed!</h1>
+            <p style=""font-size: 18px; margin: 10px 0 0 0;"">Thank you for your purchase</p>
+        </div>
+        
+        <div class=""content"">
+            <h2 style=""color: #333; margin-top: 0;"">Hello {userName}!</h2>
+            <p>Your order has been successfully confirmed and we're now provisioning your game servers. You'll receive another notification once they're ready to use.</p>
+            
+            <div class=""order-info"">
+                <h3 style=""margin-top: 0; color: #667eea;"">Order Information</h3>
+                <div class=""order-info-row"">
+                    <span><strong>Order Number:</strong></span>
+                    <span>{orderDetails.OrderNumber}</span>
+                </div>
+                <div class=""order-info-row"">
+                    <span><strong>Order Date:</strong></span>
+                    <span>{orderDetails.OrderDate:MMMM dd, yyyy}</span>
+                </div>
+                <div class=""order-info-row"">
+                    <span><strong>Payment Method:</strong></span>
+                    <span>{orderDetails.PaymentMethod ?? "Credit Card"} {(!string.IsNullOrEmpty(orderDetails.PaymentIdentifier) ? orderDetails.PaymentIdentifier : "")}</span>
+                </div>
+            </div>
+
+            <h3 style=""color: #333;"">Order Details</h3>
+            <table class=""items-table"">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th style=""text-align: center;"">Quantity</th>
+                        <th style=""text-align: right;"">Price</th>
+                        <th style=""text-align: right;"">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {itemsHtml}
+                </tbody>
+            </table>
+
+            <div class=""total-section"">
+                <div class=""total-row final"">
+                    <span>Total Paid:</span>
+                    <span>${orderDetails.TotalAmount:F2} {orderDetails.Currency}</span>
+                </div>
+            </div>
+
+            <div class=""next-steps"">
+                <h3>🎮 What's Next?</h3>
+                <div class=""step"">
+                    <strong>1. Server Provisioning</strong>
+                    <p style=""margin: 5px 0 0 0;"">Your servers are being set up and configured. This typically takes 5-10 minutes.</p>
+                </div>
+                <div class=""step"">
+                    <strong>2. Ready Notification</strong>
+                    <p style=""margin: 5px 0 0 0;"">You'll receive an email once your servers are ready with connection details.</p>
+                </div>
+                <div class=""step"">
+                    <strong>3. Access Your Dashboard</strong>
+                    <p style=""margin: 5px 0 0 0;"">Manage and monitor your servers from your dashboard.</p>
+                </div>
+            </div>
+
+            <div style=""text-align: center; margin: 30px 0;"">
+                <a href=""{dashboardUrl}"" class=""button"">Go to Dashboard</a>
+                <a href=""{orderUrl}"" class=""button button-secondary"">View Order Details</a>
+            </div>
+
+            <div class=""support-box"">
+                <strong>📞 Need Help?</strong>
+                <p style=""margin: 10px 0 0 0;"">Our support team is available 24/7. Reply to this email or contact us at support@gameserverhosting.com</p>
+            </div>
+        </div>
+
+        <div class=""footer"">
+            <p><strong>Game Server Hosting</strong></p>
+            <p>This is an automated confirmation email. Please do not reply directly to this message.</p>
+            <p>&copy; {DateTime.UtcNow.Year} Game Server Hosting. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>";
+    }
+
+    /// <summary>
+    /// Generates plain text version of order confirmation email
+    /// </summary>
+    private string GenerateOrderConfirmationPlainText(string userName, OrderConfirmationDetails orderDetails)
+    {
+        var itemsList = string.Join("\n", orderDetails.Items.Select(item => 
+            $"  - {item.Name} x{item.Quantity} @ ${item.Price:F2} = ${item.Total:F2}"));
+
+        return $@"
+ORDER CONFIRMED!
+
+Hello {userName}!
+
+Thank you for your purchase. Your order has been successfully confirmed and we're now provisioning your game servers.
+
+ORDER INFORMATION
+-----------------
+Order Number: {orderDetails.OrderNumber}
+Order Date: {orderDetails.OrderDate:MMMM dd, yyyy}
+Payment Method: {orderDetails.PaymentMethod ?? "Credit Card"} {(!string.IsNullOrEmpty(orderDetails.PaymentIdentifier) ? orderDetails.PaymentIdentifier : "")}
+
+ORDER DETAILS
+-------------
+{itemsList}
+
+Total Paid: ${orderDetails.TotalAmount:F2} {orderDetails.Currency}
+
+WHAT'S NEXT?
+------------
+1. Server Provisioning
+   Your servers are being set up and configured. This typically takes 5-10 minutes.
+
+2. Ready Notification
+   You'll receive an email once your servers are ready with connection details.
+
+3. Access Your Dashboard
+   Manage and monitor your servers from your dashboard at {_emailSettings.BaseUrl}/dashboard
+
+NEED HELP?
+----------
+Our support team is available 24/7. Contact us at support@gameserverhosting.com
+
+Best regards,
+The Game Server Hosting Team
+
+---
+This is an automated confirmation email.
+© {DateTime.UtcNow.Year} Game Server Hosting. All rights reserved.
+";
     }
 }

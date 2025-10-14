@@ -1,0 +1,329 @@
+### Payment Confirmation Workflow - API Test Suite
+### Test the new invoice and confirmation features
+
+@baseUrl = https://localhost:5001
+@apiUrl = {{baseUrl}}/api
+@token = YOUR_JWT_TOKEN_HERE
+@orderId = YOUR_ORDER_ID_HERE
+
+### 1. Get Order Details
+# First, get an order to test with
+GET {{apiUrl}}/orders/{{orderId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+###
+
+### 2. View Invoice in Browser (HTML)
+# Returns HTML that can be viewed in browser
+GET {{apiUrl}}/orders/{{orderId}}/invoice
+Authorization: Bearer {{token}}
+Accept: text/html
+
+###
+
+### 3. Download Invoice as File
+# Downloads the invoice as an HTML file
+GET {{apiUrl}}/orders/{{orderId}}/invoice/download
+Authorization: Bearer {{token}}
+
+###
+
+### 4. Get User's Order History
+# View all orders for the authenticated user
+GET {{apiUrl}}/orders/user/{{userId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+###
+
+### 5. Get Payment Details
+# View payment information
+GET {{apiUrl}}/payments/{{paymentId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+###
+
+### Test Scenario: Complete Purchase Flow
+# This tests the entire payment confirmation workflow
+
+### Step 1: Create Checkout Session
+POST {{apiUrl}}/payments/create-checkout-session
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "serverPlanId": "YOUR_SERVER_PLAN_ID",
+  "quantity": 1
+}
+
+# Response will include sessionId and checkoutUrl
+# User completes payment on Stripe checkout page
+
+###
+
+### Step 2: Check Checkout Session Status
+GET {{apiUrl}}/payments/checkout-session/{{sessionId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+###
+
+### Step 3: Verify Order Was Created (via webhook)
+# After payment, webhook should have created the order
+GET {{apiUrl}}/orders/{{orderId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+# Verify:
+# - Status is "Completed"
+# - PaymentDate is set
+# - PaymentTransactionId is populated
+
+###
+
+### Step 4: View Invoice
+GET {{apiUrl}}/orders/{{orderId}}/invoice
+Authorization: Bearer {{token}}
+Accept: text/html
+
+# Verify invoice displays:
+# - Order number
+# - Customer details
+# - Payment information
+# - Itemized charges
+# - Total amount
+# - PAID status badge
+
+###
+
+### Step 5: Download Invoice
+GET {{apiUrl}}/orders/{{orderId}}/invoice/download
+Authorization: Bearer {{token}}
+
+# Verify file downloads with correct filename:
+# Invoice-{OrderNumber}.html
+
+###
+
+### Email Verification Tests
+# These are for manual verification as emails are sent via webhook
+
+### After completing a purchase, check that:
+# 1. Confirmation email is received at the user's email address
+# 2. Email contains:
+#    - Order number
+#    - Order date
+#    - Itemized list of purchases
+#    - Total amount
+#    - Payment method
+#    - Billing address
+#    - Links to dashboard and order details
+#    - Support contact information
+# 3. Email is well-formatted and mobile-responsive
+# 4. Links in email work correctly
+
+###
+
+### Error Handling Tests
+
+### Test: Unauthorized Access to Invoice
+# Try to access invoice without authentication
+GET {{apiUrl}}/orders/{{orderId}}/invoice
+
+# Expected: 401 Unauthorized
+
+###
+
+### Test: Access Another User's Invoice
+# Try to access an order that doesn't belong to you
+GET {{apiUrl}}/orders/{{otherUsersOrderId}}/invoice
+Authorization: Bearer {{token}}
+
+# Expected: 403 Forbidden
+
+###
+
+### Test: Non-existent Order
+GET {{apiUrl}}/orders/00000000-0000-0000-0000-000000000000/invoice
+Authorization: Bearer {{token}}
+
+# Expected: 404 Not Found
+
+###
+
+### Integration Tests with Stripe Webhooks
+
+### Simulate Stripe Webhooks (for testing purposes)
+# Note: In production, these come from Stripe directly
+
+### Webhook: Checkout Session Completed
+POST {{apiUrl}}/payments/webhook
+Stripe-Signature: {{stripeSignature}}
+Content-Type: application/json
+
+{
+  "id": "evt_test_webhook",
+  "object": "event",
+  "type": "checkout.session.completed",
+  "data": {
+    "object": {
+      "id": "cs_test_session",
+      "payment_status": "paid",
+      "payment_intent": "pi_test_intent",
+      "customer_email": "customer@example.com",
+      "amount_total": 2999,
+      "currency": "usd",
+      "metadata": {
+        "user_id": "{{userId}}",
+        "server_plan_id": "{{serverPlanId}}",
+        "quantity": "1"
+      }
+    }
+  }
+}
+
+# After webhook:
+# 1. Verify order was created/updated
+# 2. Verify order status is "Completed"
+# 3. Verify confirmation email was sent
+# 4. Verify payment record was created
+
+###
+
+### Webhook: Payment Intent Succeeded
+POST {{apiUrl}}/payments/webhook
+Stripe-Signature: {{stripeSignature}}
+Content-Type: application/json
+
+{
+  "id": "evt_test_webhook",
+  "object": "event",
+  "type": "payment_intent.succeeded",
+  "data": {
+    "object": {
+      "id": "pi_test_intent",
+      "amount": 2999,
+      "currency": "usd",
+      "status": "succeeded",
+      "metadata": {
+        "user_id": "{{userId}}",
+        "order_id": "{{orderId}}"
+      }
+    }
+  }
+}
+
+# After webhook:
+# 1. Verify order status updated to "Completed"
+# 2. Verify confirmation email was sent
+# 3. Verify payment record was updated
+
+###
+
+### Combined Invoice Test
+# Test generating invoice for multiple orders
+POST {{apiUrl}}/orders/combined-invoice
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "orderIds": [
+    "{{orderId1}}",
+    "{{orderId2}}",
+    "{{orderId3}}"
+  ]
+}
+
+# Expected: Combined invoice HTML with all orders
+
+###
+
+### Performance Tests
+
+### Test: Multiple Concurrent Invoice Requests
+# Test that invoice generation handles concurrent requests
+GET {{apiUrl}}/orders/{{orderId}}/invoice
+Authorization: Bearer {{token}}
+
+GET {{apiUrl}}/orders/{{orderId2}}/invoice
+Authorization: Bearer {{token}}
+
+GET {{apiUrl}}/orders/{{orderId3}}/invoice
+Authorization: Bearer {{token}}
+
+###
+
+### Validation Checklist
+
+## Order Confirmation Page ✓
+- [ ] Page displays after successful payment
+- [ ] Order number is shown
+- [ ] Order details are correct
+- [ ] Billing information is displayed
+- [ ] Payment method is shown
+- [ ] Next steps are clear
+- [ ] Links to dashboard work
+- [ ] Support information is visible
+
+## Confirmation Email ✓
+- [ ] Email is sent automatically
+- [ ] Subject line is clear
+- [ ] Order number is in subject
+- [ ] Email contains order details
+- [ ] Payment information is correct
+- [ ] Billing address is shown
+- [ ] Links work (dashboard, order details)
+- [ ] Email is mobile-responsive
+- [ ] Plain text version exists
+- [ ] Branding is consistent
+- [ ] Support contact info is included
+
+## Invoice/Receipt ✓
+- [ ] Invoice displays correctly
+- [ ] Invoice number is unique
+- [ ] Order number is referenced
+- [ ] Customer information is correct
+- [ ] Billing address is shown
+- [ ] Payment details are accurate
+- [ ] Itemized charges are clear
+- [ ] Total amount is correct
+- [ ] Payment status is shown (PAID/PENDING)
+- [ ] Transaction ID is displayed
+- [ ] Company information is present
+- [ ] Layout is print-friendly
+- [ ] Invoice can be downloaded
+
+## Order Status ✓
+- [ ] Status updates from Pending to Completed
+- [ ] Payment date is recorded
+- [ ] Transaction ID is saved
+- [ ] Status changes are logged
+- [ ] Failed payments set status to Failed
+- [ ] Refunded orders set status to Refunded
+
+## API Security ✓
+- [ ] Authentication is required
+- [ ] Users can only access own orders
+- [ ] Invoice access is restricted to owner
+- [ ] Webhooks validate Stripe signature
+- [ ] Error messages don't leak sensitive info
+
+## Error Handling ✓
+- [ ] Graceful handling of email failures
+- [ ] Invoice generation errors are logged
+- [ ] Missing order returns 404
+- [ ] Unauthorized access returns 401
+- [ ] Forbidden access returns 403
+- [ ] Payment failures don't send confirmations
+
+## Integration ✓
+- [ ] Stripe webhooks trigger emails
+- [ ] Payment success updates order
+- [ ] Multiple payment methods supported
+- [ ] Email service fallback (SMTP/SendGrid)
+- [ ] Logging is comprehensive
+- [ ] All services are registered in DI
+
+###

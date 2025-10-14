@@ -17,15 +17,18 @@ public class PaymentService : IPaymentService
     private readonly StripeSettings _stripeSettings;
     private readonly GameServerDbContext _context;
     private readonly ILogger<PaymentService> _logger;
+    private readonly IEmailService _emailService;
 
     public PaymentService(
         IOptions<StripeSettings> stripeSettings,
         GameServerDbContext context,
-        ILogger<PaymentService> logger)
+        ILogger<PaymentService> logger,
+        IEmailService emailService)
     {
         _stripeSettings = stripeSettings.Value;
         _context = context;
         _logger = logger;
+        _emailService = emailService;
 
         // Set the Stripe API key
         StripeConfiguration.ApiKey = _stripeSettings.SecretKey;
@@ -319,6 +322,12 @@ public class PaymentService : IPaymentService
             var paymentIntentService = new PaymentIntentService();
             var paymentIntent = await paymentIntentService.GetAsync(paymentIntentId);
             await CreateOrUpdatePaymentRecordAsync(paymentIntent, order.Id, userId);
+
+            // Send confirmation email if payment is completed
+            if (order.Status == OrderStatus.Completed)
+            {
+                await SendOrderConfirmationEmailAsync(order);
+            }
         }
         catch (Exception ex)
         {
@@ -364,7 +373,13 @@ public class PaymentService : IPaymentService
             // Update order status if applicable
             if (orderId.HasValue)
             {
-                var order = await _context.Orders.FindAsync(orderId.Value);
+                var order = await _context.Orders
+                    .Include(o => o.User)
+                    .Include(o => o.ServerPlan)
+                        .ThenInclude(sp => sp!.ServerType)
+                    .Include(o => o.Payments)
+                    .FirstOrDefaultAsync(o => o.Id == orderId.Value);
+                    
                 if (order != null && order.Status != OrderStatus.Completed)
                 {
                     order.Status = OrderStatus.Completed;
@@ -376,6 +391,9 @@ public class PaymentService : IPaymentService
                     _logger.LogInformation(
                         "Updated order {OrderId} to completed status from payment intent",
                         orderId.Value);
+
+                    // Send confirmation email
+                    await SendOrderConfirmationEmailAsync(order);
                 }
             }
         }
@@ -672,6 +690,76 @@ public class PaymentService : IPaymentService
         var timestamp = DateTime.UtcNow;
         var random = new Random().Next(10000, 99999);
         return $"ORD-{timestamp:yyyyMMdd}-{random}";
+    }
+
+    private async Task SendOrderConfirmationEmailAsync(Order order)
+    {
+        try
+        {
+            _logger.LogInformation("Sending order confirmation email for order {OrderId}", order.Id);
+
+            var payment = order.Payments?.FirstOrDefault();
+            
+            var orderDetails = new OrderConfirmationDetails
+            {
+                OrderId = order.Id,
+                OrderNumber = order.OrderNumber,
+                TotalAmount = order.TotalAmount,
+                Currency = order.Currency,
+                OrderDate = order.CreatedAt,
+                PaymentMethod = order.PaymentMethod.ToString(),
+                PaymentIdentifier = payment?.PaymentIdentifier,
+                Items = new List<OrderItemDetail>
+                {
+                    new OrderItemDetail
+                    {
+                        Name = order.ServerPlan?.Name ?? "Server Plan",
+                        Description = $"{order.ServerPlan?.ServerType?.GameName ?? "Game Server"} - {order.OrderType}",
+                        Quantity = 1,
+                        Price = order.TotalAmount,
+                        Total = order.TotalAmount
+                    }
+                },
+                BillingAddress = ParseBillingAddress(order.BillingDetails)
+            };
+
+            await _emailService.SendOrderConfirmationEmailAsync(
+                order.User.Email!,
+                order.User.UserName ?? "Customer",
+                order.OrderNumber,
+                orderDetails);
+
+            _logger.LogInformation("Order confirmation email sent successfully for order {OrderId}", order.Id);
+        }
+        catch (Exception ex)
+        {
+            // Don't fail the payment process if email fails
+            _logger.LogError(ex, "Failed to send order confirmation email for order {OrderId}", order.Id);
+        }
+    }
+
+    private string? ParseBillingAddress(string billingDetailsJson)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(billingDetailsJson) || billingDetailsJson == "{}")
+            {
+                return null;
+            }
+
+            var details = JsonSerializer.Deserialize<JsonElement>(billingDetailsJson);
+            var address = details.TryGetProperty("address", out var addr) ? addr.GetString() : "";
+            var city = details.TryGetProperty("city", out var c) ? c.GetString() : "";
+            var state = details.TryGetProperty("state", out var s) ? s.GetString() : "";
+            var zip = details.TryGetProperty("zipCode", out var z) ? z.GetString() : "";
+            var country = details.TryGetProperty("country", out var co) ? co.GetString() : "";
+
+            return $"{address}, {city}, {state} {zip}, {country}";
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     #endregion
