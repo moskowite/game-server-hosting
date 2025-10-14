@@ -1,0 +1,113 @@
+@inject CartService CartService
+@implements IDisposable
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    @foreach (var notification in _notifications)
+    {
+        <div class="toast show @GetToastClass(notification.Type)" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <i class="bi @GetIconClass(notification.Type) me-2"></i>
+                <strong class="me-auto">@GetTitle(notification.Type)</strong>
+                <button type="button" class="btn-close" @onclick="() => RemoveNotification(notification)"></button>
+            </div>
+            <div class="toast-body">
+                @notification.Message
+                @if (notification.ItemCount > 0)
+                {
+                    <div class="mt-1">
+                        <small class="text-muted">Cart items: @notification.ItemCount</small>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<NotificationItem> _notifications = new();
+    private const int NotificationDuration = 3000; // 3 seconds
+
+    protected override void OnInitialized()
+    {
+        CartService.OnCartUpdated += HandleCartUpdate;
+    }
+
+    private void HandleCartUpdate(CartNotification notification)
+    {
+        var notificationItem = new NotificationItem
+        {
+            Id = Guid.NewGuid(),
+            Notification = notification,
+            Timestamp = DateTime.Now
+        };
+
+        _notifications.Add(notificationItem);
+        StateHasChanged();
+
+        // Auto-remove notification after duration
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(NotificationDuration);
+            await InvokeAsync(() =>
+            {
+                RemoveNotification(notificationItem);
+            });
+        });
+    }
+
+    private void RemoveNotification(NotificationItem item)
+    {
+        _notifications.Remove(item);
+        StateHasChanged();
+    }
+
+    private string GetToastClass(CartNotificationType type)
+    {
+        return type switch
+        {
+            CartNotificationType.Error => "bg-danger text-white",
+            CartNotificationType.ItemAdded => "bg-success text-white",
+            CartNotificationType.ItemRemoved => "bg-warning",
+            CartNotificationType.CartCleared => "bg-info text-white",
+            _ => "bg-primary text-white"
+        };
+    }
+
+    private string GetIconClass(CartNotificationType type)
+    {
+        return type switch
+        {
+            CartNotificationType.Error => "bi-exclamation-triangle-fill",
+            CartNotificationType.ItemAdded => "bi-cart-plus-fill",
+            CartNotificationType.ItemRemoved => "bi-cart-dash-fill",
+            CartNotificationType.CartCleared => "bi-cart-x-fill",
+            CartNotificationType.ItemUpdated => "bi-cart-check-fill",
+            _ => "bi-info-circle-fill"
+        };
+    }
+
+    private string GetTitle(CartNotificationType type)
+    {
+        return type switch
+        {
+            CartNotificationType.Error => "Error",
+            CartNotificationType.ItemAdded => "Success",
+            CartNotificationType.ItemRemoved => "Removed",
+            CartNotificationType.CartCleared => "Cart Cleared",
+            CartNotificationType.ItemUpdated => "Updated",
+            _ => "Notification"
+        };
+    }
+
+    public void Dispose()
+    {
+        CartService.OnCartUpdated -= HandleCartUpdate;
+    }
+
+    private class NotificationItem
+    {
+        public Guid Id { get; set; }
+        public CartNotification Notification { get; set; } = null!;
+        public DateTime Timestamp { get; set; }
+    }
+}

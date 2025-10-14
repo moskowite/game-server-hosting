@@ -1,3 +1,6 @@
+@inject CartService CartService
+@implements IDisposable
+
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">GameServerHosting.Client</a>
@@ -30,6 +33,18 @@
             </NavLink>
         </div>
         <div class="nav-item px-3">
+            <NavLink class="nav-link position-relative" href="cart">
+                <span class="bi bi-cart3" aria-hidden="true"></span> Shopping Cart
+                @if (CartService.ItemCount > 0)
+                {
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        @CartService.ItemCount
+                        <span class="visually-hidden">items in cart</span>
+                    </span>
+                }
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
             <NavLink class="nav-link" href="settings">
                 <span class="bi bi-gear-fill" aria-hidden="true"></span> Settings
             </NavLink>
@@ -52,8 +67,24 @@
 
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
+    protected override async Task OnInitializedAsync()
+    {
+        await CartService.InitializeAsync();
+        CartService.OnCartUpdated += OnCartUpdated;
+    }
+
+    private void OnCartUpdated(CartNotification notification)
+    {
+        StateHasChanged();
+    }
+
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    public void Dispose()
+    {
+        CartService.OnCartUpdated -= OnCartUpdated;
     }
 }
