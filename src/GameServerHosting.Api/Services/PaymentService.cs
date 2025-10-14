@@ -559,12 +559,27 @@ public class PaymentService : IPaymentService
             // Store payment method details if available
             if (paymentIntent.PaymentMethod != null)
             {
-                // PaymentIntent.PaymentMethod can be either a string ID or an expanded object
-                string? paymentMethodId = paymentIntent.PaymentMethod is string pmId 
-                    ? pmId 
-                    : (paymentIntent.PaymentMethod as Stripe.PaymentMethod)?.Id;
+                // PaymentIntent.PaymentMethod is an IExpandable that can be a string ID or an expanded object
+                string? paymentMethodId = null;
                 
-                if (!string.IsNullOrEmpty(paymentMethodId))
+                // Try to get the PaymentMethod object if it's already expanded
+                if (paymentIntent.PaymentMethod is Stripe.PaymentMethod expandedPaymentMethod)
+                {
+                    paymentMethodId = expandedPaymentMethod.Id;
+                    // If we have the expanded object with card details, use them directly
+                    if (expandedPaymentMethod.Card != null)
+                    {
+                        payment.PaymentIdentifier = $"**** {expandedPaymentMethod.Card.Last4}";
+                    }
+                }
+                else
+                {
+                    // PaymentMethod is just a string ID, need to fetch it
+                    paymentMethodId = paymentIntent.PaymentMethod.ToString();
+                }
+                
+                // Only fetch if we don't already have the card details and have a valid ID
+                if (string.IsNullOrEmpty(payment.PaymentIdentifier) && !string.IsNullOrEmpty(paymentMethodId))
                 {
                     try
                     {
@@ -578,7 +593,7 @@ public class PaymentService : IPaymentService
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Could not retrieve payment method details");
+                        _logger.LogWarning(ex, "Could not retrieve payment method details for ID {PaymentMethodId}", paymentMethodId);
                     }
                 }
             }
