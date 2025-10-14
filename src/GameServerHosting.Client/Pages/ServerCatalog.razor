@@ -40,8 +40,7 @@
                        class="form-control search-input" 
                        placeholder="Search by server name or description..." 
                        @bind="searchQuery"
-                       @bind:event="oninput"
-                       @oninput="OnSearchChanged" />
+                       @bind:event="oninput" />
                 @if (!string.IsNullOrEmpty(searchQuery))
                 {
                     <button class="clear-search" @onclick="ClearSearch">
@@ -104,8 +103,7 @@
                                            max="200" 
                                            step="10"
                                            @bind="maxPrice"
-                                           @bind:event="oninput"
-                                           @oninput="OnFilterChanged" />
+                                           @bind:event="oninput" />
                                     <span class="range-value">@(maxPrice == 200 ? "Any" : $"${maxPrice}")</span>
                                 </div>
                             </div>
@@ -120,8 +118,7 @@
                                            max="16" 
                                            step="1"
                                            @bind="minCpu"
-                                           @bind:event="oninput"
-                                           @oninput="OnFilterChanged" />
+                                           @bind:event="oninput" />
                                     <span class="range-value">@(minCpu == 0 ? "Any" : $"{minCpu}")</span>
                                 </div>
                             </div>
@@ -136,8 +133,7 @@
                                            max="32" 
                                            step="1"
                                            @bind="minRam"
-                                           @bind:event="oninput"
-                                           @oninput="OnFilterChanged" />
+                                           @bind:event="oninput" />
                                     <span class="range-value">@(minRam == 0 ? "Any" : $"{minRam} GB")</span>
                                 </div>
                             </div>
@@ -152,8 +148,7 @@
                                            max="500" 
                                            step="10"
                                            @bind="minStorage"
-                                           @bind:event="oninput"
-                                           @oninput="OnFilterChanged" />
+                                           @bind:event="oninput" />
                                     <span class="range-value">@(minStorage == 0 ? "Any" : $"{minStorage} GB")</span>
                                 </div>
                             </div>
@@ -168,8 +163,7 @@
                                            max="200" 
                                            step="10"
                                            @bind="minPlayers"
-                                           @bind:event="oninput"
-                                           @oninput="OnFilterChanged" />
+                                           @bind:event="oninput" />
                                     <span class="range-value">@(minPlayers == 0 ? "Any" : $"{minPlayers}")</span>
                                 </div>
                             </div>
@@ -260,7 +254,8 @@
                     </div>
                 </div>
             }
-        </div>
+            </div>
+        }
     }
 </div>
 
@@ -271,17 +266,76 @@
     private bool isLoading = true;
     
     // Search and Filter State
-    private string searchQuery = "";
+    private string _searchQuery = "";
+    private string searchQuery
+    {
+        get => _searchQuery;
+        set
+        {
+            _searchQuery = value;
+            ApplyFiltersAndSort();
+        }
+    }
+    
     private string selectedGameFilter = "";
     private string sortBy = "price-desc";
     private bool showAdvancedFilters = false;
     
     // Advanced Filter State
-    private int maxPrice = 200;
-    private int minCpu = 0;
-    private int minRam = 0;
-    private int minStorage = 0;
-    private int minPlayers = 0;
+    private int _maxPrice = 200;
+    private int maxPrice
+    {
+        get => _maxPrice;
+        set
+        {
+            _maxPrice = value;
+            ApplyFiltersAndSort();
+        }
+    }
+    
+    private int _minCpu = 0;
+    private int minCpu
+    {
+        get => _minCpu;
+        set
+        {
+            _minCpu = value;
+            ApplyFiltersAndSort();
+        }
+    }
+    
+    private int _minRam = 0;
+    private int minRam
+    {
+        get => _minRam;
+        set
+        {
+            _minRam = value;
+            ApplyFiltersAndSort();
+        }
+    }
+    
+    private int _minStorage = 0;
+    private int minStorage
+    {
+        get => _minStorage;
+        set
+        {
+            _minStorage = value;
+            ApplyFiltersAndSort();
+        }
+    }
+    
+    private int _minPlayers = 0;
+    private int minPlayers
+    {
+        get => _minPlayers;
+        set
+        {
+            _minPlayers = value;
+            ApplyFiltersAndSort();
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -307,11 +361,6 @@
         isLoading = false;
     }
 
-    private void OnSearchChanged(ChangeEventArgs e)
-    {
-        searchQuery = e.Value?.ToString() ?? "";
-        ApplyFiltersAndSort();
-    }
 
     private void OnGameFilterChanged(ChangeEventArgs e)
     {
@@ -325,10 +374,6 @@
         ApplyFiltersAndSort();
     }
 
-    private void OnFilterChanged(ChangeEventArgs e)
-    {
-        ApplyFiltersAndSort();
-    }
 
     private void ToggleAdvancedFilters()
     {
@@ -337,19 +382,19 @@
 
     private void ClearSearch()
     {
-        searchQuery = "";
+        _searchQuery = "";
         ApplyFiltersAndSort();
     }
 
     private void ClearAllFilters()
     {
-        searchQuery = "";
+        _searchQuery = "";
         selectedGameFilter = "";
-        maxPrice = 200;
-        minCpu = 0;
-        minRam = 0;
-        minStorage = 0;
-        minPlayers = 0;
+        _maxPrice = 200;
+        _minCpu = 0;
+        _minRam = 0;
+        _minStorage = 0;
+        _minPlayers = 0;
         ApplyFiltersAndSort();
     }
 
