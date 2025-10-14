@@ -2,6 +2,7 @@
 @using GameServerHosting.Client.Models
 @using GameServerHosting.Client.Services
 @inject ServerCatalogService ServerCatalogService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Server Catalog</PageTitle>
 
@@ -467,8 +468,8 @@
 
     private void SelectServer(ServerTypeDto server)
     {
-        // TODO: Navigate to server order page or show details
-        Console.WriteLine($"Selected server: {server.Name}");
+        // Navigate to server details page
+        NavigationManager.NavigateTo($"/servers/{server.Id}");
     }
 
     private string GetGameIcon(string gameName)
