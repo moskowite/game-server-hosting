@@ -33,19 +33,168 @@
     else
     {
         <div class="filter-section">
-            <div class="filter-group">
-                <label for="game-filter">Filter by Game:</label>
-                <select id="game-filter" class="form-select" @onchange="OnGameFilterChanged">
-                    <option value="">All Games</option>
-                    @foreach (var game in gameNames)
-                    {
-                        <option value="@game">@game</option>
-                    }
-                </select>
+            <!-- Search Bar -->
+            <div class="search-bar">
+                <span class="bi bi-search search-icon"></span>
+                <input type="text" 
+                       class="form-control search-input" 
+                       placeholder="Search by server name or description..." 
+                       @bind="searchQuery"
+                       @bind:event="oninput" />
+                @if (!string.IsNullOrEmpty(searchQuery))
+                {
+                    <button class="clear-search" @onclick="ClearSearch">
+                        <span class="bi bi-x"></span>
+                    </button>
+                }
+            </div>
+
+            <!-- Filter and Sort Controls -->
+            <div class="filter-controls">
+                <div class="filter-row">
+                    <!-- Game Filter -->
+                    <div class="filter-item">
+                        <label for="game-filter">Game:</label>
+                        <select id="game-filter" class="form-select" @onchange="OnGameFilterChanged">
+                            <option value="">All Games</option>
+                            @foreach (var game in gameNames)
+                            {
+                                <option value="@game">@game</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Sort Options -->
+                    <div class="filter-item">
+                        <label for="sort-select">Sort By:</label>
+                        <select id="sort-select" class="form-select" @onchange="OnSortChanged">
+                            <option value="name">Name (A-Z)</option>
+                            <option value="name-desc">Name (Z-A)</option>
+                            <option value="game">Game Type</option>
+                            <option value="price-asc">Price (Low to High)</option>
+                            <option value="price-desc" selected>Price (High to Low)</option>
+                            <option value="cpu-desc">CPU (High to Low)</option>
+                            <option value="ram-desc">RAM (High to Low)</option>
+                            <option value="players-desc">Max Players (High to Low)</option>
+                        </select>
+                    </div>
+
+                    <!-- Toggle Advanced Filters -->
+                    <div class="filter-item">
+                        <button class="btn btn-outline-secondary toggle-filters" @onclick="ToggleAdvancedFilters">
+                            <span class="bi @(showAdvancedFilters ? "bi-chevron-up" : "bi-chevron-down")"></span>
+                            @(showAdvancedFilters ? "Hide" : "Show") Filters
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Advanced Filters -->
+                @if (showAdvancedFilters)
+                {
+                    <div class="advanced-filters">
+                        <div class="filter-row">
+                            <!-- Price Range -->
+                            <div class="filter-item">
+                                <label>Max Monthly Price:</label>
+                                <div class="range-filter">
+                                    <input type="range" 
+                                           class="form-range" 
+                                           min="0" 
+                                           max="200" 
+                                           step="10"
+                                           @bind="maxPrice"
+                                           @bind:event="oninput" />
+                                    <span class="range-value">@(maxPrice == 200 ? "Any" : $"${maxPrice}")</span>
+                                </div>
+                            </div>
+
+                            <!-- Min CPU -->
+                            <div class="filter-item">
+                                <label>Min CPU Cores:</label>
+                                <div class="range-filter">
+                                    <input type="range" 
+                                           class="form-range" 
+                                           min="0" 
+                                           max="16" 
+                                           step="1"
+                                           @bind="minCpu"
+                                           @bind:event="oninput" />
+                                    <span class="range-value">@(minCpu == 0 ? "Any" : $"{minCpu}")</span>
+                                </div>
+                            </div>
+
+                            <!-- Min RAM -->
+                            <div class="filter-item">
+                                <label>Min RAM (GB):</label>
+                                <div class="range-filter">
+                                    <input type="range" 
+                                           class="form-range" 
+                                           min="0" 
+                                           max="32" 
+                                           step="1"
+                                           @bind="minRam"
+                                           @bind:event="oninput" />
+                                    <span class="range-value">@(minRam == 0 ? "Any" : $"{minRam} GB")</span>
+                                </div>
+                            </div>
+
+                            <!-- Min Storage -->
+                            <div class="filter-item">
+                                <label>Min Storage (GB):</label>
+                                <div class="range-filter">
+                                    <input type="range" 
+                                           class="form-range" 
+                                           min="0" 
+                                           max="500" 
+                                           step="10"
+                                           @bind="minStorage"
+                                           @bind:event="oninput" />
+                                    <span class="range-value">@(minStorage == 0 ? "Any" : $"{minStorage} GB")</span>
+                                </div>
+                            </div>
+
+                            <!-- Min Players -->
+                            <div class="filter-item">
+                                <label>Min Players:</label>
+                                <div class="range-filter">
+                                    <input type="range" 
+                                           class="form-range" 
+                                           min="0" 
+                                           max="200" 
+                                           step="10"
+                                           @bind="minPlayers"
+                                           @bind:event="oninput" />
+                                    <span class="range-value">@(minPlayers == 0 ? "Any" : $"{minPlayers}")</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Clear Filters Button -->
+                        <div class="filter-actions">
+                            <button class="btn btn-sm btn-outline-danger" @onclick="ClearAllFilters">
+                                <span class="bi bi-x-circle"></span> Clear All Filters
+                            </button>
+                            <span class="results-count">Showing @filteredServerTypes.Count of @serverTypes?.Count servers</span>
+                        </div>
+                    </div>
+                }
             </div>
         </div>
 
-        <div class="server-grid">
+        @if (!filteredServerTypes.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <span class="bi bi-funnel"></span>
+                </div>
+                <h3>No Servers Match Your Filters</h3>
+                <p>Try adjusting your search criteria or clear filters to see more options.</p>
+                <button class="btn btn-primary" @onclick="ClearAllFilters">Clear Filters</button>
+            </div>
+        }
+        else
+        {
+            <div class="server-grid">
             @foreach (var server in filteredServerTypes)
             {
                 <div class="server-card" @onclick="() => SelectServer(server)">
@@ -105,7 +254,8 @@
                     </div>
                 </div>
             }
-        </div>
+            </div>
+        }
     }
 </div>
 
@@ -114,7 +264,78 @@
     private List<ServerTypeDto> filteredServerTypes = new();
     private List<string> gameNames = new();
     private bool isLoading = true;
+    
+    // Search and Filter State
+    private string _searchQuery = "";
+    private string searchQuery
+    {
+        get => _searchQuery;
+        set
+        {
+            _searchQuery = value;
+            ApplyFiltersAndSort();
+        }
+    }
+    
     private string selectedGameFilter = "";
+    private string sortBy = "price-desc";
+    private bool showAdvancedFilters = false;
+    
+    // Advanced Filter State
+    private int _maxPrice = 200;
+    private int maxPrice
+    {
+        get => _maxPrice;
+        set
+        {
+            _maxPrice = value;
+            ApplyFiltersAndSort();
+        }
+    }
+    
+    private int _minCpu = 0;
+    private int minCpu
+    {
+        get => _minCpu;
+        set
+        {
+            _minCpu = value;
+            ApplyFiltersAndSort();
+        }
+    }
+    
+    private int _minRam = 0;
+    private int minRam
+    {
+        get => _minRam;
+        set
+        {
+            _minRam = value;
+            ApplyFiltersAndSort();
+        }
+    }
+    
+    private int _minStorage = 0;
+    private int minStorage
+    {
+        get => _minStorage;
+        set
+        {
+            _minStorage = value;
+            ApplyFiltersAndSort();
+        }
+    }
+    
+    private int _minPlayers = 0;
+    private int minPlayers
+    {
+        get => _minPlayers;
+        set
+        {
+            _minPlayers = value;
+            ApplyFiltersAndSort();
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -134,30 +355,114 @@
                 .OrderBy(g => g)
                 .ToList();
             
-            filteredServerTypes = serverTypes;
+            ApplyFiltersAndSort();
         }
         
         isLoading = false;
     }
 
+
     private void OnGameFilterChanged(ChangeEventArgs e)
     {
         selectedGameFilter = e.Value?.ToString() ?? "";
-        ApplyFilters();
+        ApplyFiltersAndSort();
     }
 
-    private void ApplyFilters()
+    private void OnSortChanged(ChangeEventArgs e)
+    {
+        sortBy = e.Value?.ToString() ?? "price-desc";
+        ApplyFiltersAndSort();
+    }
+
+
+    private void ToggleAdvancedFilters()
+    {
+        showAdvancedFilters = !showAdvancedFilters;
+    }
+
+    private void ClearSearch()
+    {
+        _searchQuery = "";
+        ApplyFiltersAndSort();
+    }
+
+    private void ClearAllFilters()
+    {
+        _searchQuery = "";
+        selectedGameFilter = "";
+        _maxPrice = 200;
+        _minCpu = 0;
+        _minRam = 0;
+        _minStorage = 0;
+        _minPlayers = 0;
+        ApplyFiltersAndSort();
+    }
+
+    private void ApplyFiltersAndSort()
     {
         if (serverTypes == null) return;
 
-        filteredServerTypes = serverTypes;
+        // Start with all servers
+        var filtered = serverTypes.AsEnumerable();
 
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            var query = searchQuery.ToLower();
+            filtered = filtered.Where(s => 
+                s.Name.ToLower().Contains(query) || 
+                s.Description.ToLower().Contains(query) ||
+                s.GameName.ToLower().Contains(query));
+        }
+
+        // Apply game filter
         if (!string.IsNullOrEmpty(selectedGameFilter))
         {
-            filteredServerTypes = filteredServerTypes
-                .Where(s => s.GameName.Equals(selectedGameFilter, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            filtered = filtered.Where(s => 
+                s.GameName.Equals(selectedGameFilter, StringComparison.OrdinalIgnoreCase));
         }
+
+        // Apply advanced filters
+        if (maxPrice < 200)
+        {
+            filtered = filtered.Where(s => s.MonthlyPrice <= maxPrice);
+        }
+
+        if (minCpu > 0)
+        {
+            filtered = filtered.Where(s => s.CpuCores >= minCpu);
+        }
+
+        if (minRam > 0)
+        {
+            filtered = filtered.Where(s => s.RamMb >= minRam * 1024);
+        }
+
+        if (minStorage > 0)
+        {
+            filtered = filtered.Where(s => s.DiskGb >= minStorage);
+        }
+
+        if (minPlayers > 0)
+        {
+            filtered = filtered.Where(s => s.MaxPlayers >= minPlayers);
+        }
+
+        // Apply sorting
+        filtered = sortBy switch
+        {
+            "name" => filtered.OrderBy(s => s.Name),
+            "name-desc" => filtered.OrderByDescending(s => s.Name),
+            "game" => filtered.OrderBy(s => s.GameName).ThenBy(s => s.Name),
+            "price-asc" => filtered.OrderBy(s => s.MonthlyPrice).ThenBy(s => s.Name),
+            "price-desc" => filtered.OrderByDescending(s => s.MonthlyPrice).ThenBy(s => s.Name),
+            "cpu-desc" => filtered.OrderByDescending(s => s.CpuCores).ThenBy(s => s.Name),
+            "ram-desc" => filtered.OrderByDescending(s => s.RamMb).ThenBy(s => s.Name),
+            "players-desc" => filtered.OrderByDescending(s => s.MaxPlayers).ThenBy(s => s.Name),
+            _ => filtered.OrderByDescending(s => s.MonthlyPrice).ThenBy(s => s.Name)
+        };
+
+        filteredServerTypes = filtered.ToList();
     }
 
     private void SelectServer(ServerTypeDto server)
