@@ -28,9 +28,10 @@ Welcome to the Game Server Hosting platform documentation! This guide will help 
 **Feature-specific documentation:**
 
 1. **[Authentication & Authorization](features/authentication.md)** - JWT, Identity, and security
-2. **[Email Verification](features/email-verification.md)** - Email system and verification flow
-3. **[Dashboard](features/dashboard.md)** - User dashboard implementation
-4. **[User Management](features/user-management.md)** - Profiles, settings, and preferences
+2. **[Checkout Flow](features/checkout-flow.md)** - **NEW**: 5-step checkout process for purchasing servers
+3. **[Email Verification](features/email-verification.md)** - Email system and verification flow
+4. **[Dashboard](features/dashboard.md)** - User dashboard implementation
+5. **[User Management](features/user-management.md)** - Profiles, settings, and preferences
 
 ### 🚢 Deployment
 
@@ -44,10 +45,11 @@ Welcome to the Game Server Hosting platform documentation! This guide will help 
 
 **Additional resources:**
 
-1. **[Migration Guide](reference/migration-guide.md)** - Database migration reference
-2. **[EF Core Setup](reference/ef-core-setup.md)** - Entity Framework Core guide
-3. **[Troubleshooting](reference/troubleshooting.md)** - Common issues and solutions
-4. **[Project Roadmap](reference/roadmap.md)** - Future plans and features
+1. **[Checkout Quick Reference](reference/checkout-quick-reference.md)** - **NEW**: Checkout flow developer guide
+2. **[Migration Guide](reference/migration-guide.md)** - Database migration reference
+3. **[EF Core Setup](reference/ef-core-setup.md)** - Entity Framework Core guide
+4. **[Troubleshooting](reference/troubleshooting.md)** - Common issues and solutions
+5. **[Project Roadmap](reference/roadmap.md)** - Future plans and features
 
 ## 🎯 Quick Links
 

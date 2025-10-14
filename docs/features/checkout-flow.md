@@ -383,3 +383,8 @@ A comprehensive, production-ready checkout flow has been implemented with:
 - ✅ Order confirmation with next steps
 
 The checkout flow is ready for backend integration and provides an excellent user experience for purchasing game server hosting services.
+
+## Additional Documentation
+
+- **[Implementation Guide](checkout-implementation.md)** - Complete technical documentation with all implementation details
+- **[Quick Reference](../reference/checkout-quick-reference.md)** - Developer quick-start guide for working with the checkout flow

@@ -270,10 +270,10 @@
         }
     }
 
-    private async Task<bool> JSConfirm(string message)
+    private Task<bool> JSConfirm(string message)
     {
         // For now, just return true. In production, use JSInterop for confirm dialog
-        return true;
+        return Task.FromResult(true);
     }
 
     private void ApplyPromoCode()

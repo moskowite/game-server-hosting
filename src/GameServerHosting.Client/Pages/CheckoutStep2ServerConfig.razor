@@ -44,8 +44,7 @@
                                class="form-control" 
                                placeholder="e.g., My Awesome Server"
                                @bind="config.ServerName"
-                               @bind:event="oninput"
-                               @onchange="() => UpdateConfig(item.Id, config)"
+                               @bind:after="() => UpdateConfig(item.Id, config)"
                                maxlength="50" />
                         <small class="form-text">Give your server a unique name (3-50 characters)</small>
                     </div>
@@ -57,7 +56,7 @@
                         </label>
                         <select class="form-select" 
                                 @bind="config.Region"
-                                @onchange="() => UpdateConfig(item.Id, config)">
+                                @bind:after="() => UpdateConfig(item.Id, config)">
                             <option value="">Select a region...</option>
                             <option value="us-east">US East (New York)</option>
                             <option value="us-west">US West (Los Angeles)</option>
@@ -79,7 +78,7 @@
                             <input type="number" 
                                    class="form-control" 
                                    @bind="config.MaxPlayers"
-                                   @onchange="() => UpdateConfig(item.Id, config)"
+                                   @bind:after="() => UpdateConfig(item.Id, config)"
                                    min="1" 
                                    max="1000" />
                         </div>
@@ -93,7 +92,7 @@
                                    class="form-control" 
                                    placeholder="Leave empty for no password"
                                    @bind="config.Password"
-                                   @onchange="() => UpdateConfig(item.Id, config)" />
+                                   @bind:after="() => UpdateConfig(item.Id, config)" />
                         </div>
                     </div>
 
@@ -106,7 +105,7 @@
                                   rows="3" 
                                   placeholder="Add a description for your server..."
                                   @bind="config.Description"
-                                  @onchange="() => UpdateConfig(item.Id, config)"></textarea>
+                                  @bind:after="() => UpdateConfig(item.Id, config)"></textarea>
                     </div>
 
                     <div class="server-options">
@@ -116,7 +115,7 @@
                             <input type="checkbox" 
                                    id="public-@index" 
                                    @bind="config.IsPublic"
-                                   @onchange="() => UpdateConfig(item.Id, config)" />
+                                   @bind:after="() => UpdateConfig(item.Id, config)" />
                             <label for="public-@index">
                                 <span class="bi bi-globe"></span>
                                 <span>Public Server</span>
@@ -128,7 +127,7 @@
                             <input type="checkbox" 
                                    id="autostart-@index" 
                                    @bind="config.AutoStart"
-                                   @onchange="() => UpdateConfig(item.Id, config)" />
+                                   @bind:after="() => UpdateConfig(item.Id, config)" />
                             <label for="autostart-@index">
                                 <span class="bi bi-play-circle"></span>
                                 <span>Auto-Start</span>
@@ -140,7 +139,7 @@
                             <input type="checkbox" 
                                    id="autoupdate-@index" 
                                    @bind="config.AutoUpdate"
-                                   @onchange="() => UpdateConfig(item.Id, config)" />
+                                   @bind:after="() => UpdateConfig(item.Id, config)" />
                             <label for="autoupdate-@index">
                                 <span class="bi bi-arrow-repeat"></span>
                                 <span>Auto-Update</span>
@@ -152,7 +151,7 @@
                             <input type="checkbox" 
                                    id="backup-@index" 
                                    @bind="config.BackupEnabled"
-                                   @onchange="() => UpdateConfig(item.Id, config)" />
+                                   @bind:after="() => UpdateConfig(item.Id, config)" />
                             <label for="backup-@index">
                                 <span class="bi bi-cloud-upload"></span>
                                 <span>Enable Backups</span>

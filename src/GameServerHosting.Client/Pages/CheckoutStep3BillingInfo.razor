@@ -27,8 +27,7 @@
                            class="form-control" 
                            placeholder="John"
                            @bind="billingDetails.FirstName"
-                           @bind:event="oninput"
-                           @onchange="UpdateBillingDetails" />
+                           @bind:after="UpdateBillingDetails" />
                 </div>
 
                 <div class="form-group">
@@ -37,8 +36,7 @@
                            class="form-control" 
                            placeholder="Doe"
                            @bind="billingDetails.LastName"
-                           @bind:event="oninput"
-                           @onchange="UpdateBillingDetails" />
+                           @bind:after="UpdateBillingDetails" />
                 </div>
             </div>
 
@@ -48,8 +46,7 @@
                        class="form-control" 
                        placeholder="john.doe@example.com"
                        @bind="billingDetails.Email"
-                       @bind:event="oninput"
-                       @onchange="UpdateBillingDetails" />
+                       @bind:after="UpdateBillingDetails" />
                 <small class="form-text">We'll send your invoice and server details to this email</small>
             </div>
 
@@ -60,7 +57,7 @@
                            class="form-control" 
                            placeholder="Company Name"
                            @bind="billingDetails.Company"
-                           @onchange="UpdateBillingDetails" />
+                           @bind:after="UpdateBillingDetails" />
                 </div>
 
                 <div class="form-group">
@@ -69,7 +66,7 @@
                            class="form-control" 
                            placeholder="Tax ID or VAT Number"
                            @bind="billingDetails.TaxId"
-                           @onchange="UpdateBillingDetails" />
+                           @bind:after="UpdateBillingDetails" />
                 </div>
             </div>
         </div>
@@ -86,8 +83,7 @@
                        class="form-control" 
                        placeholder="123 Main Street"
                        @bind="billingDetails.Address"
-                       @bind:event="oninput"
-                       @onchange="UpdateBillingDetails" />
+                       @bind:after="UpdateBillingDetails" />
             </div>
 
             <div class="form-group">
@@ -96,7 +92,7 @@
                        class="form-control" 
                        placeholder="Apartment, suite, unit, etc."
                        @bind="billingDetails.Address2"
-                       @onchange="UpdateBillingDetails" />
+                       @bind:after="UpdateBillingDetails" />
             </div>
 
             <div class="form-row">
@@ -106,8 +102,7 @@
                            class="form-control" 
                            placeholder="New York"
                            @bind="billingDetails.City"
-                           @bind:event="oninput"
-                           @onchange="UpdateBillingDetails" />
+                           @bind:after="UpdateBillingDetails" />
                 </div>
 
                 <div class="form-group">
@@ -116,8 +111,7 @@
                            class="form-control" 
                            placeholder="NY"
                            @bind="billingDetails.State"
-                           @bind:event="oninput"
-                           @onchange="UpdateBillingDetails" />
+                           @bind:after="UpdateBillingDetails" />
                 </div>
             </div>
 
@@ -128,15 +122,14 @@
                            class="form-control" 
                            placeholder="10001"
                            @bind="billingDetails.ZipCode"
-                           @bind:event="oninput"
-                           @onchange="UpdateBillingDetails" />
+                           @bind:after="UpdateBillingDetails" />
                 </div>
 
                 <div class="form-group">
                     <label class="form-label required">Country</label>
                     <select class="form-select" 
                             @bind="billingDetails.Country"
-                            @onchange="UpdateBillingDetails">
+                            @bind:after="UpdateBillingDetails">
                         <option value="United States">United States</option>
                         <option value="Canada">Canada</option>
                         <option value="United Kingdom">United Kingdom</option>
@@ -156,7 +149,7 @@
                        class="form-control" 
                        placeholder="+1 (555) 123-4567"
                        @bind="billingDetails.Phone"
-                       @onchange="UpdateBillingDetails" />
+                       @bind:after="UpdateBillingDetails" />
             </div>
         </div>
 
