@@ -1,0 +1,408 @@
+@page "/plans/compare"
+@inject ServerPlansService ServerPlansService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Compare Plans - Game Server Hosting</PageTitle>
+
+<div class="plan-comparison-container">
+    <div class="comparison-header">
+        <h1><i class="bi bi-layout-split"></i> Compare Server Plans</h1>
+        <p class="text-muted">Select plans to compare their features side-by-side</p>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading plans...</span>
+            </div>
+            <p>Loading available plans...</p>
+        </div>
+    }
+    else if (allPlans == null || !allPlans.Any())
+    {
+        <div class="alert alert-warning" role="alert">
+            <h4 class="alert-heading">No Plans Available</h4>
+            <p>There are no server plans available to compare at this time.</p>
+        </div>
+    }
+    else
+    {
+        <!-- Plan Selection Section -->
+        <div class="plan-selector-section">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Select First Plan:</label>
+                    <select class="form-select" @onchange="OnPlan1Changed">
+                        <option value="">-- Select a plan --</option>
+                        @foreach (var plan in allPlans)
+                        {
+                            <option value="@plan.Id" selected="@(selectedPlan1?.Id == plan.Id)">
+                                @plan.Name - @plan.BillingCycle (@plan.Price.ToString("C"))
+                            </option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Select Second Plan:</label>
+                    <select class="form-select" @onchange="OnPlan2Changed">
+                        <option value="">-- Select a plan --</option>
+                        @foreach (var plan in allPlans)
+                        {
+                            <option value="@plan.Id" selected="@(selectedPlan2?.Id == plan.Id)">
+                                @plan.Name - @plan.BillingCycle (@plan.Price.ToString("C"))
+                            </option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparison View -->
+        @if (selectedPlan1 != null && selectedPlan2 != null)
+        {
+            <div class="comparison-view">
+                <div class="comparison-grid">
+                    <!-- Plan 1 Card -->
+                    <div class="plan-card">
+                        <div class="plan-header">
+                            <h3>@selectedPlan1.Name</h3>
+                            <div class="plan-price">
+                                <span class="price-value">@selectedPlan1.Price.ToString("C")</span>
+                                <span class="price-period">/ @selectedPlan1.BillingCycle</span>
+                            </div>
+                            @if (!selectedPlan1.IsActive)
+                            {
+                                <span class="badge bg-secondary">Inactive</span>
+                            }
+                        </div>
+                        <div class="plan-details">
+                            <div class="detail-item @GetDifferenceClass(nameof(selectedPlan1.BillingCycle))">
+                                <i class="bi bi-calendar-event"></i>
+                                <div>
+                                    <strong>Billing Cycle</strong>
+                                    <p>@selectedPlan1.BillingCycle</p>
+                                </div>
+                            </div>
+                            <div class="detail-item @GetDifferenceClass(nameof(selectedPlan1.Price))">
+                                <i class="bi bi-currency-dollar"></i>
+                                <div>
+                                    <strong>Price</strong>
+                                    <p>@selectedPlan1.Price.ToString("C") @selectedPlan1.Currency</p>
+                                </div>
+                            </div>
+                            <div class="detail-item @GetDifferenceClass(nameof(selectedPlan1.DurationHours))">
+                                <i class="bi bi-clock"></i>
+                                <div>
+                                    <strong>Duration</strong>
+                                    <p>@FormatDuration(selectedPlan1.DurationHours)</p>
+                                </div>
+                            </div>
+                            <div class="detail-item @GetDifferenceClass(nameof(selectedPlan1.DiscountPercentage))">
+                                <i class="bi bi-percent"></i>
+                                <div>
+                                    <strong>Discount</strong>
+                                    <p>@selectedPlan1.DiscountPercentage.ToString("0.##")%</p>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <i class="bi bi-info-circle"></i>
+                                <div>
+                                    <strong>Description</strong>
+                                    <p>@(string.IsNullOrWhiteSpace(selectedPlan1.Description) ? "No description available" : selectedPlan1.Description)</p>
+                                </div>
+                            </div>
+                            <div class="detail-item @GetDifferenceClass(nameof(selectedPlan1.IsActive))">
+                                <i class="bi bi-toggle-on"></i>
+                                <div>
+                                    <strong>Status</strong>
+                                    <p>
+                                        <span class="badge bg-@(selectedPlan1.IsActive ? "success" : "secondary")">
+                                            @(selectedPlan1.IsActive ? "Active" : "Inactive")
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <i class="bi bi-calendar-plus"></i>
+                                <div>
+                                    <strong>Created</strong>
+                                    <p>@selectedPlan1.CreatedAt.ToString("MMM dd, yyyy")</p>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <i class="bi bi-pencil-square"></i>
+                                <div>
+                                    <strong>Last Updated</strong>
+                                    <p>@selectedPlan1.UpdatedAt.ToString("MMM dd, yyyy")</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Divider for desktop -->
+                    <div class="comparison-divider">
+                        <div class="divider-line"></div>
+                        <div class="divider-badge">
+                            <i class="bi bi-arrow-left-right"></i>
+                        </div>
+                    </div>
+
+                    <!-- Plan 2 Card -->
+                    <div class="plan-card">
+                        <div class="plan-header">
+                            <h3>@selectedPlan2.Name</h3>
+                            <div class="plan-price">
+                                <span class="price-value">@selectedPlan2.Price.ToString("C")</span>
+                                <span class="price-period">/ @selectedPlan2.BillingCycle</span>
+                            </div>
+                            @if (!selectedPlan2.IsActive)
+                            {
+                                <span class="badge bg-secondary">Inactive</span>
+                            }
+                        </div>
+                        <div class="plan-details">
+                            <div class="detail-item @GetDifferenceClass(nameof(selectedPlan2.BillingCycle))">
+                                <i class="bi bi-calendar-event"></i>
+                                <div>
+                                    <strong>Billing Cycle</strong>
+                                    <p>@selectedPlan2.BillingCycle</p>
+                                </div>
+                            </div>
+                            <div class="detail-item @GetDifferenceClass(nameof(selectedPlan2.Price))">
+                                <i class="bi bi-currency-dollar"></i>
+                                <div>
+                                    <strong>Price</strong>
+                                    <p>@selectedPlan2.Price.ToString("C") @selectedPlan2.Currency</p>
+                                </div>
+                            </div>
+                            <div class="detail-item @GetDifferenceClass(nameof(selectedPlan2.DurationHours))">
+                                <i class="bi bi-clock"></i>
+                                <div>
+                                    <strong>Duration</strong>
+                                    <p>@FormatDuration(selectedPlan2.DurationHours)</p>
+                                </div>
+                            </div>
+                            <div class="detail-item @GetDifferenceClass(nameof(selectedPlan2.DiscountPercentage))">
+                                <i class="bi bi-percent"></i>
+                                <div>
+                                    <strong>Discount</strong>
+                                    <p>@selectedPlan2.DiscountPercentage.ToString("0.##")%</p>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <i class="bi bi-info-circle"></i>
+                                <div>
+                                    <strong>Description</strong>
+                                    <p>@(string.IsNullOrWhiteSpace(selectedPlan2.Description) ? "No description available" : selectedPlan2.Description)</p>
+                                </div>
+                            </div>
+                            <div class="detail-item @GetDifferenceClass(nameof(selectedPlan2.IsActive))">
+                                <i class="bi bi-toggle-on"></i>
+                                <div>
+                                    <strong>Status</strong>
+                                    <p>
+                                        <span class="badge bg-@(selectedPlan2.IsActive ? "success" : "secondary")">
+                                            @(selectedPlan2.IsActive ? "Active" : "Inactive")
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <i class="bi bi-calendar-plus"></i>
+                                <div>
+                                    <strong>Created</strong>
+                                    <p>@selectedPlan2.CreatedAt.ToString("MMM dd, yyyy")</p>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <i class="bi bi-pencil-square"></i>
+                                <div>
+                                    <strong>Last Updated</strong>
+                                    <p>@selectedPlan2.UpdatedAt.ToString("MMM dd, yyyy")</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Differences Summary -->
+                @if (differences.Any())
+                {
+                    <div class="differences-summary">
+                        <h4><i class="bi bi-exclamation-circle"></i> Key Differences</h4>
+                        <ul>
+                            @foreach (var diff in differences)
+                            {
+                                <li>
+                                    <strong>@diff.Field:</strong> 
+                                    <span class="diff-value">@diff.Plan1Value</span>
+                                    <i class="bi bi-arrow-right"></i>
+                                    <span class="diff-value">@diff.Plan2Value</span>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> These plans have identical features.
+                    </div>
+                }
+            </div>
+        }
+        else if (selectedPlan1 != null || selectedPlan2 != null)
+        {
+            <div class="alert alert-info mt-4">
+                <i class="bi bi-info-circle"></i> Please select both plans to start comparing.
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <i class="bi bi-bar-chart"></i>
+                <h3>Ready to Compare</h3>
+                <p>Select two plans from the dropdowns above to see a detailed comparison.</p>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<ServerPlanDto>? allPlans;
+    private ServerPlanDto? selectedPlan1;
+    private ServerPlanDto? selectedPlan2;
+    private bool isLoading = true;
+    private List<PlanDifference> differences = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPlans();
+    }
+
+    private async Task LoadPlans()
+    {
+        isLoading = true;
+        allPlans = await ServerPlansService.GetAllServerPlansAsync();
+        isLoading = false;
+    }
+
+    private void OnPlan1Changed(ChangeEventArgs e)
+    {
+        var planId = e.Value?.ToString();
+        selectedPlan1 = string.IsNullOrEmpty(planId) ? null : allPlans?.FirstOrDefault(p => p.Id.ToString() == planId);
+        CalculateDifferences();
+    }
+
+    private void OnPlan2Changed(ChangeEventArgs e)
+    {
+        var planId = e.Value?.ToString();
+        selectedPlan2 = string.IsNullOrEmpty(planId) ? null : allPlans?.FirstOrDefault(p => p.Id.ToString() == planId);
+        CalculateDifferences();
+    }
+
+    private void CalculateDifferences()
+    {
+        differences.Clear();
+
+        if (selectedPlan1 == null || selectedPlan2 == null)
+            return;
+
+        if (selectedPlan1.BillingCycle != selectedPlan2.BillingCycle)
+        {
+            differences.Add(new PlanDifference
+            {
+                Field = "Billing Cycle",
+                Plan1Value = selectedPlan1.BillingCycle.ToString(),
+                Plan2Value = selectedPlan2.BillingCycle.ToString()
+            });
+        }
+
+        if (selectedPlan1.Price != selectedPlan2.Price)
+        {
+            differences.Add(new PlanDifference
+            {
+                Field = "Price",
+                Plan1Value = selectedPlan1.Price.ToString("C"),
+                Plan2Value = selectedPlan2.Price.ToString("C")
+            });
+        }
+
+        if (selectedPlan1.DurationHours != selectedPlan2.DurationHours)
+        {
+            differences.Add(new PlanDifference
+            {
+                Field = "Duration",
+                Plan1Value = FormatDuration(selectedPlan1.DurationHours),
+                Plan2Value = FormatDuration(selectedPlan2.DurationHours)
+            });
+        }
+
+        if (selectedPlan1.DiscountPercentage != selectedPlan2.DiscountPercentage)
+        {
+            differences.Add(new PlanDifference
+            {
+                Field = "Discount",
+                Plan1Value = selectedPlan1.DiscountPercentage.ToString("0.##") + "%",
+                Plan2Value = selectedPlan2.DiscountPercentage.ToString("0.##") + "%"
+            });
+        }
+
+        if (selectedPlan1.IsActive != selectedPlan2.IsActive)
+        {
+            differences.Add(new PlanDifference
+            {
+                Field = "Status",
+                Plan1Value = selectedPlan1.IsActive ? "Active" : "Inactive",
+                Plan2Value = selectedPlan2.IsActive ? "Active" : "Inactive"
+            });
+        }
+    }
+
+    private string GetDifferenceClass(string fieldName)
+    {
+        if (selectedPlan1 == null || selectedPlan2 == null)
+            return "";
+
+        var isDifferent = fieldName switch
+        {
+            nameof(selectedPlan1.BillingCycle) => selectedPlan1.BillingCycle != selectedPlan2.BillingCycle,
+            nameof(selectedPlan1.Price) => selectedPlan1.Price != selectedPlan2.Price,
+            nameof(selectedPlan1.DurationHours) => selectedPlan1.DurationHours != selectedPlan2.DurationHours,
+            nameof(selectedPlan1.DiscountPercentage) => selectedPlan1.DiscountPercentage != selectedPlan2.DiscountPercentage,
+            nameof(selectedPlan1.IsActive) => selectedPlan1.IsActive != selectedPlan2.IsActive,
+            _ => false
+        };
+
+        return isDifferent ? "has-difference" : "";
+    }
+
+    private string FormatDuration(int hours)
+    {
+        if (hours < 24)
+            return $"{hours} hour{(hours != 1 ? "s" : "")}";
+        
+        var days = hours / 24;
+        if (days < 7)
+            return $"{days} day{(days != 1 ? "s" : "")}";
+        
+        var weeks = days / 7;
+        if (weeks < 4)
+            return $"{weeks} week{(weeks != 1 ? "s" : "")}";
+        
+        var months = days / 30;
+        if (months < 12)
+            return $"{months} month{(months != 1 ? "s" : "")}";
+        
+        var years = days / 365;
+        return $"{years} year{(years != 1 ? "s" : "")}";
+    }
+
+    private class PlanDifference
+    {
+        public string Field { get; set; } = "";
+        public string Plan1Value { get; set; } = "";
+        public string Plan2Value { get; set; } = "";
+    }
+}
