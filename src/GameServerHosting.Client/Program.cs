@@ -21,5 +21,6 @@ builder.Services.AddScoped(sp => new HttpClient
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ServerCatalogService>();
+builder.Services.AddScoped<ServerPlansService>();
 
 await builder.Build().RunAsync();

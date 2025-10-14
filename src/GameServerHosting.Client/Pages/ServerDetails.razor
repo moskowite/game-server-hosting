@@ -1,0 +1,464 @@
+@page "/servers/{id:guid}"
+@using GameServerHosting.Client.Models
+@using GameServerHosting.Client.Services
+@using GameServerHosting.Shared.Enums
+@inject ServerCatalogService ServerCatalogService
+@inject ServerPlansService ServerPlansService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(server?.Name ?? "Server Details")</PageTitle>
+
+<div class="details-container">
+    @if (isLoading)
+    {
+        <div class="loading-container">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="loading-text">Loading server details...</p>
+        </div>
+    }
+    else if (server == null)
+    {
+        <div class="empty-state">
+            <div class="empty-icon">
+                <span class="bi bi-exclamation-triangle"></span>
+            </div>
+            <h3>Server Not Found</h3>
+            <p>The server you're looking for doesn't exist or has been removed.</p>
+            <button class="btn btn-primary" @onclick="NavigateBack">
+                <span class="bi bi-arrow-left"></span> Back to Catalog
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- Breadcrumb Navigation -->
+        <div class="breadcrumb-nav">
+            <button class="btn btn-link" @onclick="NavigateBack">
+                <span class="bi bi-arrow-left"></span> Back to Catalog
+            </button>
+        </div>
+
+        <!-- Server Header -->
+        <div class="server-header">
+            <div class="header-icon">
+                <span class="bi @GetGameIcon(server.GameName)"></span>
+            </div>
+            <div class="header-content">
+                <div class="game-badge">@server.GameName</div>
+                <h1 class="server-title">@server.Name</h1>
+                <p class="server-description">@server.Description</p>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="content-grid">
+            <!-- Left Column: Specifications & Features -->
+            <div class="left-column">
+                <!-- Full Specifications -->
+                <div class="spec-card">
+                    <div class="card-title">
+                        <span class="bi bi-cpu-fill"></span>
+                        <h2>Server Specifications</h2>
+                    </div>
+                    <div class="specs-grid">
+                        <div class="spec-detail">
+                            <div class="spec-icon">
+                                <span class="bi bi-cpu"></span>
+                            </div>
+                            <div class="spec-info">
+                                <div class="spec-label">CPU Cores</div>
+                                <div class="spec-value">@server.CpuCores Cores</div>
+                                <div class="spec-description">Dedicated processor cores for optimal performance</div>
+                            </div>
+                        </div>
+
+                        <div class="spec-detail">
+                            <div class="spec-icon">
+                                <span class="bi bi-memory"></span>
+                            </div>
+                            <div class="spec-info">
+                                <div class="spec-label">RAM</div>
+                                <div class="spec-value">@FormatMemory(server.RamMb)</div>
+                                <div class="spec-description">High-speed DDR4 memory</div>
+                            </div>
+                        </div>
+
+                        <div class="spec-detail">
+                            <div class="spec-icon">
+                                <span class="bi bi-hdd-fill"></span>
+                            </div>
+                            <div class="spec-info">
+                                <div class="spec-label">Storage</div>
+                                <div class="spec-value">@server.DiskGb GB</div>
+                                <div class="spec-description">NVMe SSD storage</div>
+                            </div>
+                        </div>
+
+                        <div class="spec-detail">
+                            <div class="spec-icon">
+                                <span class="bi bi-people-fill"></span>
+                            </div>
+                            <div class="spec-info">
+                                <div class="spec-label">Max Players</div>
+                                <div class="spec-value">Up to @server.MaxPlayers</div>
+                                <div class="spec-description">Concurrent player capacity</div>
+                            </div>
+                        </div>
+
+                        <div class="spec-detail">
+                            <div class="spec-icon">
+                                <span class="bi bi-lightning-charge-fill"></span>
+                            </div>
+                            <div class="spec-info">
+                                <div class="spec-label">Performance</div>
+                                <div class="spec-value">High Performance</div>
+                                <div class="spec-description">Optimized for @server.GameName</div>
+                            </div>
+                        </div>
+
+                        <div class="spec-detail">
+                            <div class="spec-icon">
+                                <span class="bi bi-globe"></span>
+                            </div>
+                            <div class="spec-info">
+                                <div class="spec-label">Network</div>
+                                <div class="spec-value">1 Gbps</div>
+                                <div class="spec-description">Ultra-fast network connectivity</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Included Features -->
+                <div class="features-card">
+                    <div class="card-title">
+                        <span class="bi bi-check-circle-fill"></span>
+                        <h2>Included Features</h2>
+                    </div>
+                    <div class="features-list">
+                        <div class="feature-item">
+                            <span class="bi bi-check2-circle"></span>
+                            <div class="feature-content">
+                                <div class="feature-name">Instant Setup</div>
+                                <div class="feature-desc">Server ready in minutes</div>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="bi bi-check2-circle"></span>
+                            <div class="feature-content">
+                                <div class="feature-name">DDoS Protection</div>
+                                <div class="feature-desc">Enterprise-grade security</div>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="bi bi-check2-circle"></span>
+                            <div class="feature-content">
+                                <div class="feature-name">24/7 Support</div>
+                                <div class="feature-desc">Expert assistance anytime</div>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="bi bi-check2-circle"></span>
+                            <div class="feature-content">
+                                <div class="feature-name">Automatic Backups</div>
+                                <div class="feature-desc">Daily backups included</div>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="bi bi-check2-circle"></span>
+                            <div class="feature-content">
+                                <div class="feature-name">Full FTP Access</div>
+                                <div class="feature-desc">Complete file management</div>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="bi bi-check2-circle"></span>
+                            <div class="feature-content">
+                                <div class="feature-name">Control Panel</div>
+                                <div class="feature-desc">Easy server management</div>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="bi bi-check2-circle"></span>
+                            <div class="feature-content">
+                                <div class="feature-name">Mod Support</div>
+                                <div class="feature-desc">Install custom mods easily</div>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="bi bi-check2-circle"></span>
+                            <div class="feature-content">
+                                <div class="feature-name">99.9% Uptime</div>
+                                <div class="feature-desc">Guaranteed availability</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Pricing Plans -->
+            <div class="right-column">
+                <div class="pricing-section">
+                    <div class="card-title">
+                        <span class="bi bi-tag-fill"></span>
+                        <h2>Choose Your Plan</h2>
+                    </div>
+
+                    @if (loadingPlans)
+                    {
+                        <div class="loading-plans">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <span>Loading plans...</span>
+                        </div>
+                    }
+                    else if (serverPlans == null || !serverPlans.Any())
+                    {
+                        <!-- Fallback to basic pricing from server type -->
+                        <div class="pricing-breakdown">
+                            <div class="price-card">
+                                <div class="price-header">
+                                    <span class="bi bi-clock"></span>
+                                    <h3>Hourly Plan</h3>
+                                </div>
+                                <div class="price-amount">
+                                    <span class="currency">$</span>
+                                    <span class="amount">@server.HourlyPrice.ToString("F2")</span>
+                                    <span class="period">/hour</span>
+                                </div>
+                                <div class="price-description">
+                                    Pay only for what you use
+                                </div>
+                                <button class="btn btn-primary select-plan-btn" @onclick="() => SelectPlan(null, BillingCycle.Hourly)">
+                                    <span class="bi bi-check-circle"></span>
+                                    Select Plan
+                                </button>
+                            </div>
+
+                            <div class="price-card featured">
+                                <div class="featured-badge">Most Popular</div>
+                                <div class="price-header">
+                                    <span class="bi bi-calendar-month"></span>
+                                    <h3>Monthly Plan</h3>
+                                </div>
+                                <div class="price-amount">
+                                    <span class="currency">$</span>
+                                    <span class="amount">@server.MonthlyPrice.ToString("F2")</span>
+                                    <span class="period">/month</span>
+                                </div>
+                                <div class="price-savings">
+                                    Save @CalculateSavings(server)%
+                                </div>
+                                <div class="price-description">
+                                    Best value for consistent hosting
+                                </div>
+                                <button class="btn btn-primary select-plan-btn" @onclick="() => SelectPlan(null, BillingCycle.Monthly)">
+                                    <span class="bi bi-check-circle"></span>
+                                    Select Plan
+                                </button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Display actual server plans -->
+                        <div class="pricing-breakdown">
+                            @foreach (var plan in serverPlans.OrderBy(p => p.DisplayOrder))
+                            {
+                                var isMostPopular = plan.BillingCycle == BillingCycle.Monthly;
+                                <div class="price-card @(isMostPopular ? "featured" : "")">
+                                    @if (isMostPopular)
+                                    {
+                                        <div class="featured-badge">Most Popular</div>
+                                    }
+                                    <div class="price-header">
+                                        <span class="bi @GetBillingIcon(plan.BillingCycle)"></span>
+                                        <h3>@plan.Name</h3>
+                                    </div>
+                                    <div class="price-amount">
+                                        <span class="currency">$</span>
+                                        <span class="amount">@plan.Price.ToString("F2")</span>
+                                        <span class="period">/@GetBillingPeriod(plan.BillingCycle)</span>
+                                    </div>
+                                    @if (plan.DiscountPercentage > 0)
+                                    {
+                                        <div class="price-savings">
+                                            Save @plan.DiscountPercentage.ToString("F0")%
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(plan.Description))
+                                    {
+                                        <div class="price-description">
+                                            @plan.Description
+                                        </div>
+                                    }
+                                    <div class="plan-details">
+                                        <div class="plan-detail-item">
+                                            <span class="bi bi-clock-history"></span>
+                                            <span>@GetDurationText(plan.DurationHours)</span>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-primary select-plan-btn" @onclick="() => SelectPlan(plan, plan.BillingCycle)">
+                                        <span class="bi bi-check-circle"></span>
+                                        Select Plan
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <!-- Pricing Notes -->
+                    <div class="pricing-notes">
+                        <div class="note-item">
+                            <span class="bi bi-info-circle"></span>
+                            <span>All prices in USD</span>
+                        </div>
+                        <div class="note-item">
+                            <span class="bi bi-arrow-repeat"></span>
+                            <span>Cancel anytime, no questions asked</span>
+                        </div>
+                        <div class="note-item">
+                            <span class="bi bi-shield-check"></span>
+                            <span>30-day money-back guarantee</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private ServerTypeDto? server;
+    private List<ServerPlanDto>? serverPlans;
+    private bool isLoading = true;
+    private bool loadingPlans = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadServerDetails();
+    }
+
+    private async Task LoadServerDetails()
+    {
+        isLoading = true;
+        loadingPlans = true;
+        
+        server = await ServerCatalogService.GetServerTypeAsync(Id);
+        isLoading = false;
+
+        if (server != null)
+        {
+            serverPlans = await ServerPlansService.GetServerPlansByTypeAsync(server.Id, isActive: true);
+            loadingPlans = false;
+        }
+    }
+
+    private void NavigateBack()
+    {
+        NavigationManager.NavigateTo("/servers");
+    }
+
+    private void SelectPlan(ServerPlanDto? plan, BillingCycle billingCycle)
+    {
+        if (server == null) return;
+        
+        // TODO: Navigate to order/checkout page with selected plan
+        var planInfo = plan != null 
+            ? $"Plan: {plan.Name} (${plan.Price})" 
+            : $"Plan: {billingCycle} (${(billingCycle == BillingCycle.Monthly ? server.MonthlyPrice : server.HourlyPrice)})";
+        
+        Console.WriteLine($"Selected {server.Name} - {planInfo}");
+        
+        // For now, show an alert (in production, this would navigate to checkout)
+        // You might want to navigate to an order page: NavigationManager.NavigateTo($"/order?serverId={server.Id}&planId={plan?.Id}");
+    }
+
+    private string GetGameIcon(string gameName)
+    {
+        return gameName.ToLower() switch
+        {
+            "minecraft" => "bi-square-fill",
+            "cs:go" or "counter-strike" => "bi-crosshair",
+            "rust" => "bi-hammer",
+            "ark" => "bi-egg",
+            "terraria" => "bi-tree-fill",
+            "valheim" => "bi-shield-fill",
+            "7 days to die" => "bi-radioactive",
+            _ => "bi-controller"
+        };
+    }
+
+    private string GetBillingIcon(BillingCycle cycle)
+    {
+        return cycle switch
+        {
+            BillingCycle.Hourly => "bi-clock",
+            BillingCycle.Daily => "bi-sun",
+            BillingCycle.Weekly => "bi-calendar-week",
+            BillingCycle.Monthly => "bi-calendar-month",
+            BillingCycle.Quarterly => "bi-calendar3",
+            BillingCycle.SemiAnnual => "bi-calendar2-range",
+            BillingCycle.Annual => "bi-calendar-check",
+            _ => "bi-calendar"
+        };
+    }
+
+    private string GetBillingPeriod(BillingCycle cycle)
+    {
+        return cycle switch
+        {
+            BillingCycle.Hourly => "hour",
+            BillingCycle.Daily => "day",
+            BillingCycle.Weekly => "week",
+            BillingCycle.Monthly => "month",
+            BillingCycle.Quarterly => "quarter",
+            BillingCycle.SemiAnnual => "6 months",
+            BillingCycle.Annual => "year",
+            _ => "period"
+        };
+    }
+
+    private string GetDurationText(int hours)
+    {
+        if (hours < 24)
+            return $"{hours} hour{(hours != 1 ? "s" : "")}";
+        
+        var days = hours / 24;
+        if (days < 7)
+            return $"{days} day{(days != 1 ? "s" : "")}";
+        
+        var weeks = days / 7;
+        if (weeks < 4)
+            return $"{weeks} week{(weeks != 1 ? "s" : "")}";
+        
+        var months = days / 30;
+        return $"{months} month{(months != 1 ? "s" : "")}";
+    }
+
+    private string FormatMemory(int ramMb)
+    {
+        if (ramMb >= 1024)
+        {
+            return $"{ramMb / 1024} GB";
+        }
+        return $"{ramMb} MB";
+    }
+
+    private int CalculateSavings(ServerTypeDto server)
+    {
+        if (server.HourlyPrice == 0) return 0;
+        
+        var hourlyMonthly = server.HourlyPrice * 730; // Average hours per month
+        if (hourlyMonthly == 0) return 0;
+        
+        var savings = ((hourlyMonthly - server.MonthlyPrice) / hourlyMonthly) * 100;
+        return (int)Math.Round(savings);
+    }
+}
