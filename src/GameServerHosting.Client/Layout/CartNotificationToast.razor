@@ -4,18 +4,18 @@
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11">
     @foreach (var notification in _notifications)
     {
-        <div class="toast show @GetToastClass(notification.Type)" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast show @GetToastClass(notification.Notification.Type)" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="toast-header">
-                <i class="bi @GetIconClass(notification.Type) me-2"></i>
-                <strong class="me-auto">@GetTitle(notification.Type)</strong>
+                <i class="bi @GetIconClass(notification.Notification.Type) me-2"></i>
+                <strong class="me-auto">@GetTitle(notification.Notification.Type)</strong>
                 <button type="button" class="btn-close" @onclick="() => RemoveNotification(notification)"></button>
             </div>
             <div class="toast-body">
-                @notification.Message
-                @if (notification.ItemCount > 0)
+                @notification.Notification.Message
+                @if (notification.Notification.ItemCount > 0)
                 {
                     <div class="mt-1">
-                        <small class="text-muted">Cart items: @notification.ItemCount</small>
+                        <small class="text-muted">Cart items: @notification.Notification.ItemCount</small>
                     </div>
                 }
             </div>
@@ -26,9 +26,11 @@
 @code {
     private List<NotificationItem> _notifications = new();
     private const int NotificationDuration = 3000; // 3 seconds
+    private CancellationTokenSource? _cts;
 
     protected override void OnInitialized()
     {
+        _cts = new CancellationTokenSource();
         CartService.OnCartUpdated += HandleCartUpdate;
     }
 
@@ -44,15 +46,26 @@
         _notifications.Add(notificationItem);
         StateHasChanged();
 
-        // Auto-remove notification after duration
+        // Auto-remove notification after duration with cancellation support
+        var cancellationToken = _cts?.Token ?? CancellationToken.None;
         _ = Task.Run(async () =>
         {
-            await Task.Delay(NotificationDuration);
-            await InvokeAsync(() =>
+            try
             {
-                RemoveNotification(notificationItem);
-            });
-        });
+                await Task.Delay(NotificationDuration, cancellationToken);
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    await InvokeAsync(() =>
+                    {
+                        RemoveNotification(notificationItem);
+                    });
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                // Expected when component is disposed
+            }
+        }, cancellationToken);
     }
 
     private void RemoveNotification(NotificationItem item)
@@ -102,6 +115,8 @@
     public void Dispose()
     {
         CartService.OnCartUpdated -= HandleCartUpdate;
+        _cts?.Cancel();
+        _cts?.Dispose();
     }
 
     private class NotificationItem
