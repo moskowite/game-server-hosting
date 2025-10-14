@@ -1,8 +1,7 @@
-using GameServerHosting.Shared.Entities;
 using GameServerHosting.Shared.Enums;
 using Microsoft.AspNetCore.Identity;
 
-namespace GameServerHosting.Api.Data;
+namespace GameServerHosting.Shared.Entities;
 
 /// <summary>
 /// Custom application user that extends IdentityUser with additional properties

@@ -127,5 +127,5 @@ public class Payment
     /// <summary>
     /// User who made the payment
     /// </summary>
-    public User User { get; set; } = null!;
+    public ApplicationUser User { get; set; } = null!;
 }

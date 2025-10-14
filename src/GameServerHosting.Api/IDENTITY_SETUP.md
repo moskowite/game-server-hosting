@@ -6,13 +6,19 @@ This document describes the ASP.NET Core Identity implementation for the Game Se
 ## What Was Implemented
 
 ### 1. Packages Installed
+
+**GameServerHosting.Api:**
 - **Microsoft.AspNetCore.Identity.EntityFrameworkCore** (v8.0.11)
   - Provides Identity integration with Entity Framework Core
+
+**GameServerHosting.Shared:**
+- **Microsoft.Extensions.Identity.Stores** (v8.0.11)
+  - Provides the base Identity types (IdentityUser, IdentityRole, etc.)
 
 ### 2. ApplicationUser Class
 Created `ApplicationUser` class that extends `IdentityUser<Guid>` with custom properties:
 
-**Location**: `src/GameServerHosting.Api/Data/ApplicationUser.cs`
+**Location**: `src/GameServerHosting.Shared/Entities/ApplicationUser.cs`
 
 **Custom Properties**:
 - `FirstName` - User's first name

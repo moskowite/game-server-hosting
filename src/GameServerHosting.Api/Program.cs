@@ -1,4 +1,5 @@
 using GameServerHosting.Api.Data;
+using GameServerHosting.Shared.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;

@@ -82,7 +82,7 @@ public class GameServer
     /// <summary>
     /// Owner of this server
     /// </summary>
-    public User User { get; set; } = null!;
+    public ApplicationUser User { get; set; } = null!;
 
     /// <summary>
     /// Server type definition
