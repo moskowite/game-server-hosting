@@ -1,0 +1,131 @@
+### Payment Service API Tests
+### Base URL
+@baseUrl = http://localhost:5000
+@token = YOUR_JWT_TOKEN_HERE
+
+### 1. Create Payment Intent
+POST {{baseUrl}}/api/payments/create-payment-intent
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "amount": 1000,
+  "currency": "usd",
+  "orderId": null,
+  "metadata": {
+    "description": "Test payment for game server"
+  }
+}
+
+### 2. Create Payment Intent with Order ID
+POST {{baseUrl}}/api/payments/create-payment-intent
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "amount": 2999,
+  "currency": "usd",
+  "orderId": "00000000-0000-0000-0000-000000000000",
+  "metadata": {
+    "server_plan": "Premium",
+    "quantity": "1"
+  }
+}
+
+### 3. Confirm Payment
+POST {{baseUrl}}/api/payments/confirm-payment
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "paymentIntentId": "pi_test_123456789",
+  "paymentMethodId": "pm_card_visa"
+}
+
+### 4. Refund Payment (Full Refund)
+POST {{baseUrl}}/api/payments/refund
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "paymentIntentId": "pi_test_123456789",
+  "reason": "Customer request"
+}
+
+### 5. Refund Payment (Partial Refund)
+POST {{baseUrl}}/api/payments/refund
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "paymentIntentId": "pi_test_123456789",
+  "amount": 500,
+  "reason": "Partial refund for service issue"
+}
+
+### 6. Create Checkout Session (Existing Endpoint)
+POST {{baseUrl}}/api/payments/create-checkout-session
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "serverPlanId": "00000000-0000-0000-0000-000000000000",
+  "quantity": 1
+}
+
+### 7. Get Checkout Session (Existing Endpoint)
+GET {{baseUrl}}/api/payments/checkout-session/cs_test_123456789
+Authorization: Bearer {{token}}
+
+### Webhook Endpoint (No Auth Required)
+### Note: This is typically called by Stripe, not directly by clients
+POST {{baseUrl}}/api/webhooks/stripe
+Content-Type: application/json
+Stripe-Signature: whsec_test_secret
+
+{
+  "id": "evt_test_webhook",
+  "object": "event",
+  "type": "payment_intent.succeeded",
+  "data": {
+    "object": {
+      "id": "pi_test_123456789",
+      "amount": 1000,
+      "currency": "usd",
+      "status": "succeeded"
+    }
+  }
+}
+
+###
+### Testing Instructions
+###
+### 1. First, authenticate and get a JWT token:
+###    - Use the auth endpoints to login
+###    - Copy the token from the response
+###    - Replace YOUR_JWT_TOKEN_HERE with your actual token
+###
+### 2. Test Create Payment Intent:
+###    - Run test #1 to create a basic payment intent
+###    - Save the paymentIntentId and clientSecret from response
+###
+### 3. Test Confirm Payment (in real scenario):
+###    - Use Stripe.js on frontend to collect payment method
+###    - Send payment method ID to confirm endpoint
+###    - For testing, you can use test payment method IDs
+###
+### 4. Test Refund:
+###    - Use a successfully completed payment intent ID
+###    - Test both full and partial refunds
+###
+### 5. Webhook Testing:
+###    - Use Stripe CLI for local webhook testing:
+###      stripe listen --forward-to localhost:5000/api/webhooks/stripe
+###    - Trigger test webhooks:
+###      stripe trigger payment_intent.succeeded
+###
+### Test Card Numbers (for Stripe test mode):
+### - Success: 4242 4242 4242 4242
+### - Declined: 4000 0000 0000 0002
+### - 3D Secure: 4000 0027 6000 3184
+### - Any future expiry date and any 3-digit CVC

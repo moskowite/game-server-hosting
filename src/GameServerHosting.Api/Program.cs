@@ -137,6 +137,9 @@ try
     // Register Order Validation Service
     builder.Services.AddScoped<IOrderValidationService, OrderValidationService>();
 
+    // Register Payment Service
+    builder.Services.AddScoped<IPaymentService, PaymentService>();
+
     // Configure CORS
     var corsConfig = builder.Configuration.GetSection("Cors");
     var policyName = corsConfig.GetValue<string>("PolicyName") ?? "GameServerHostingPolicy";
