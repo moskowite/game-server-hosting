@@ -1,0 +1,94 @@
+### Order Validation and Creation Tests
+### Prerequisites: 
+### 1. User must be authenticated (obtain access token via auth endpoint)
+### 2. Cart must contain at least one item
+### 3. Server plans must exist and be active
+
+@baseUrl = https://localhost:7001/api
+@accessToken = YOUR_ACCESS_TOKEN_HERE
+
+### 1. Add item to cart (prerequisite)
+POST {{baseUrl}}/cart/add
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "serverPlanId": "00000000-0000-0000-0000-000000000001",
+  "quantity": 1
+}
+
+### 2. Get current cart (verify items)
+GET {{baseUrl}}/cart
+Authorization: Bearer {{accessToken}}
+
+### 3. Create order from cart with full validation
+### This endpoint will:
+### - Validate cart items (check existence, availability, prices)
+### - Validate billing information
+### - Check inventory/availability
+### - Create order records
+### - Clear the cart
+POST {{baseUrl}}/orders/create-from-cart
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "paymentMethod": "Stripe",
+  "billingDetails": "{\"firstName\":\"John\",\"lastName\":\"Doe\",\"email\":\"john.doe@example.com\",\"phone\":\"+1234567890\",\"addressLine1\":\"123 Main Street\",\"addressLine2\":\"Apt 4B\",\"city\":\"New York\",\"state\":\"NY\",\"postalCode\":\"10001\",\"country\":\"USA\",\"company\":\"Example Corp\",\"taxId\":\"12-3456789\"}"
+}
+
+### 4. Create order from cart - Test with invalid billing (missing required fields)
+POST {{baseUrl}}/orders/create-from-cart
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "paymentMethod": "PayPal",
+  "billingDetails": "{\"firstName\":\"John\"}"
+}
+
+### 5. Create order from cart - Test with empty cart
+# First clear the cart, then try to create order
+DELETE {{baseUrl}}/cart/clear
+Authorization: Bearer {{accessToken}}
+
+###
+POST {{baseUrl}}/orders/create-from-cart
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "paymentMethod": "CreditCard",
+  "billingDetails": "{\"firstName\":\"John\",\"lastName\":\"Doe\",\"email\":\"john.doe@example.com\",\"addressLine1\":\"123 Main St\",\"city\":\"Boston\",\"postalCode\":\"02101\",\"country\":\"USA\"}"
+}
+
+### 6. Get order by ID
+GET {{baseUrl}}/orders/{{orderId}}
+Authorization: Bearer {{accessToken}}
+
+### 7. Get all user orders
+GET {{baseUrl}}/orders/user/{{userId}}
+Authorization: Bearer {{accessToken}}
+
+### 8. Test with properly formatted billing details (example with all fields)
+POST {{baseUrl}}/orders/create-from-cart
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "paymentMethod": "Stripe",
+  "billingDetails": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Smith\",\n  \"email\": \"jane.smith@example.com\",\n  \"phone\": \"+1-555-0123\",\n  \"addressLine1\": \"456 Oak Avenue\",\n  \"addressLine2\": \"Suite 100\",\n  \"city\": \"San Francisco\",\n  \"state\": \"CA\",\n  \"postalCode\": \"94102\",\n  \"country\": \"United States\",\n  \"company\": \"Tech Startup Inc\",\n  \"taxId\": \"98-7654321\"\n}"
+}
+
+### 9. Original create order endpoint (still works for direct orders)
+POST {{baseUrl}}/orders/create
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "serverPlanId": "00000000-0000-0000-0000-000000000001",
+  "orderType": "NewServer",
+  "paymentMethod": "CreditCard",
+  "billingDetails": "{\"firstName\":\"Test\",\"lastName\":\"User\",\"email\":\"test@example.com\",\"addressLine1\":\"123 Test St\",\"city\":\"TestCity\",\"postalCode\":\"12345\",\"country\":\"TestCountry\"}",
+  "serverId": null
+}
