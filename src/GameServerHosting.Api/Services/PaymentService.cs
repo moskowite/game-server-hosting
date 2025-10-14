@@ -641,6 +641,15 @@ public class PaymentService : IPaymentService
             .FirstOrDefaultAsync(p => p.TransactionId == transactionId);
     }
 
+    /// <inheritdoc/>
+    public async Task<Payment?> GetPaymentByIdAsync(Guid paymentId)
+    {
+        return await _context.Payments
+            .Include(p => p.Order)
+            .Include(p => p.User)
+            .FirstOrDefaultAsync(p => p.Id == paymentId);
+    }
+
     #region Private Helper Methods
 
     private static PaymentStatus MapPaymentIntentStatus(string stripeStatus)

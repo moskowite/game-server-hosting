@@ -80,4 +80,11 @@ public interface IPaymentService
     /// <param name="transactionId">The Stripe payment intent ID</param>
     /// <returns>The payment record or null if not found</returns>
     Task<Payment?> GetPaymentByTransactionIdAsync(string transactionId);
+
+    /// <summary>
+    /// Gets a payment by ID
+    /// </summary>
+    /// <param name="paymentId">The payment ID</param>
+    /// <returns>The payment record or null if not found</returns>
+    Task<Payment?> GetPaymentByIdAsync(Guid paymentId);
 }

@@ -1,0 +1,59 @@
+### Payment API Endpoints Tests
+### These tests demonstrate the newly created/updated payment endpoints
+
+@baseUrl = https://localhost:7001
+@token = your-jwt-token-here
+
+### 1. POST /api/payments/create-intent
+### Creates a payment intent for direct payment processing
+POST {{baseUrl}}/api/payments/create-intent
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "amount": 1999,
+  "currency": "usd",
+  "orderId": "00000000-0000-0000-0000-000000000000",
+  "metadata": {
+    "server_plan": "Premium",
+    "quantity": "1"
+  }
+}
+
+### 2. POST /api/payments/confirm
+### Confirms a payment intent
+POST {{baseUrl}}/api/payments/confirm
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "paymentIntentId": "pi_xxxxxxxxxxxxx",
+  "paymentMethodId": "pm_xxxxxxxxxxxxx"
+}
+
+### 3. POST /api/payments/webhook
+### Webhook endpoint for Stripe callbacks (no auth required)
+POST {{baseUrl}}/api/payments/webhook
+Content-Type: application/json
+Stripe-Signature: t=1234567890,v1=signature_hash_here
+
+{
+  "id": "evt_test_webhook",
+  "object": "event",
+  "type": "payment_intent.succeeded",
+  "data": {
+    "object": {
+      "id": "pi_xxxxxxxxxxxxx",
+      "amount": 1999,
+      "currency": "usd",
+      "status": "succeeded"
+    }
+  }
+}
+
+### 4. GET /api/payments/{id}
+### Retrieves payment details by ID
+GET {{baseUrl}}/api/payments/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
+
+###
