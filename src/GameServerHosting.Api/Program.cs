@@ -128,6 +128,9 @@ try
     // Register Email Service
     builder.Services.AddScoped<IEmailService, EmailService>();
 
+    // Register Order Validation Service
+    builder.Services.AddScoped<IOrderValidationService, OrderValidationService>();
+
     // Configure CORS
     var corsConfig = builder.Configuration.GetSection("Cors");
     var policyName = corsConfig.GetValue<string>("PolicyName") ?? "GameServerHostingPolicy";

@@ -1,5 +1,6 @@
 using GameServerHosting.Api.Data;
 using GameServerHosting.Api.Models;
+using GameServerHosting.Api.Services;
 using GameServerHosting.Shared.Entities;
 using GameServerHosting.Shared.Enums;
 using Microsoft.AspNetCore.Authorization;
@@ -21,15 +22,148 @@ public class OrdersController : ControllerBase
     private readonly GameServerDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<OrdersController> _logger;
+    private readonly IOrderValidationService _orderValidationService;
 
     public OrdersController(
         GameServerDbContext context,
         UserManager<ApplicationUser> userManager,
-        ILogger<OrdersController> logger)
+        ILogger<OrdersController> logger,
+        IOrderValidationService orderValidationService)
     {
         _context = context;
         _userManager = userManager;
         _logger = logger;
+        _orderValidationService = orderValidationService;
+    }
+
+    /// <summary>
+    /// Create orders from cart items with full validation
+    /// </summary>
+    /// <param name="request">Order creation request with billing details</param>
+    /// <returns>Created order details</returns>
+    [HttpPost("create-from-cart")]
+    [ProducesResponseType(typeof(OrderDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<OrderDto>> CreateOrderFromCart([FromBody] CreateOrderFromCartRequest request)
+    {
+        try
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("Unauthorized order creation attempt");
+                return Unauthorized(new { message = "User not authenticated" });
+            }
+
+            var userGuid = Guid.Parse(userId);
+
+            // Step 1: Validate cart items
+            _logger.LogInformation("Validating cart items for user {UserId}", userId);
+            var cartValidation = await _orderValidationService.ValidateCartItemsAsync(userGuid);
+            if (!cartValidation.IsValid)
+            {
+                _logger.LogWarning("Cart validation failed for user {UserId}: {Error}", userId, cartValidation.ErrorMessage);
+                return BadRequest(new { message = cartValidation.ErrorMessage });
+            }
+
+            // Step 2: Validate billing information
+            _logger.LogInformation("Validating billing information for user {UserId}", userId);
+            var billingValidation = _orderValidationService.ValidateBillingInformation(request.BillingDetails);
+            if (!billingValidation.IsValid)
+            {
+                _logger.LogWarning("Billing validation failed for user {UserId}: {Errors}", userId, string.Join(", ", billingValidation.Errors));
+                return BadRequest(new 
+                { 
+                    message = billingValidation.ErrorMessage,
+                    errors = billingValidation.Errors 
+                });
+            }
+
+            // Step 3: Check inventory/availability
+            _logger.LogInformation("Checking inventory availability for user {UserId}", userId);
+            var inventoryValidation = await _orderValidationService.CheckInventoryAvailabilityAsync(cartValidation.CartItems);
+            if (!inventoryValidation.IsValid)
+            {
+                _logger.LogWarning("Inventory check failed for user {UserId}: {Errors}", userId, string.Join(", ", inventoryValidation.Errors));
+                return BadRequest(new 
+                { 
+                    message = inventoryValidation.ErrorMessage,
+                    errors = inventoryValidation.Errors 
+                });
+            }
+
+            // Step 4: Create orders (one order per cart item for better tracking)
+            var orders = new List<Order>();
+            var datePrefix = DateTime.UtcNow.ToString("yyyyMMdd");
+            var todayOrderCount = await _context.Orders
+                .Where(o => o.OrderNumber.StartsWith($"ORD-{datePrefix}"))
+                .CountAsync();
+
+            foreach (var cartItem in cartValidation.CartItems)
+            {
+                var orderNumber = $"ORD-{datePrefix}-{(todayOrderCount + orders.Count + 1):D5}";
+
+                var order = new Order
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userGuid,
+                    ServerId = null, // Will be set when server is provisioned
+                    ServerPlanId = cartItem.ServerPlanId,
+                    OrderNumber = orderNumber,
+                    OrderType = OrderType.NewServer,
+                    Status = OrderStatus.Pending,
+                    TotalAmount = cartItem.Price * cartItem.Quantity,
+                    Currency = cartItem.Currency,
+                    PaymentMethod = request.PaymentMethod,
+                    BillingDetails = request.BillingDetails,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                orders.Add(order);
+                _context.Orders.Add(order);
+            }
+
+            // Save all orders
+            await _context.SaveChangesAsync();
+
+            // Step 5: Clear cart after successful order creation
+            _context.CartItems.RemoveRange(cartValidation.CartItems);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "Created {OrderCount} orders for user {UserId}, total: {Total} {Currency}",
+                orders.Count, userId, cartValidation.TotalAmount, cartValidation.Currency);
+
+            // Return the first order (or a summary of all orders)
+            // For simplicity, returning info about the first order
+            var firstOrder = orders.First();
+            var firstCartItem = cartValidation.CartItems.First();
+
+            var orderDto = new OrderDto
+            {
+                Id = firstOrder.Id,
+                OrderNumber = firstOrder.OrderNumber,
+                OrderType = firstOrder.OrderType,
+                Status = firstOrder.Status,
+                TotalAmount = cartValidation.TotalAmount, // Total of all orders
+                Currency = firstOrder.Currency,
+                PaymentMethod = firstOrder.PaymentMethod,
+                PaymentDate = firstOrder.PaymentDate,
+                CreatedAt = firstOrder.CreatedAt,
+                ServerName = null,
+                GameName = firstCartItem.ServerPlan?.ServerType?.GameName,
+                PlanName = firstCartItem.ServerPlan?.Name
+            };
+
+            return CreatedAtAction(nameof(GetOrderById), new { id = firstOrder.Id }, orderDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating order from cart");
+            return StatusCode(500, new { message = "An error occurred while creating the order" });
+        }
     }
 
     /// <summary>
