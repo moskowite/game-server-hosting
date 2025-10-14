@@ -12,4 +12,4 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 // Register services
 builder.Services.AddScoped<DashboardService>();
 
-await builder.Build().RunAsync();unAsync();
+await builder.Build().RunAsync();
