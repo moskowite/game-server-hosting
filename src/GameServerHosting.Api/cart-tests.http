@@ -1,0 +1,33 @@
+@hostname = http://localhost:5000
+@token = YOUR_JWT_TOKEN_HERE
+
+### Get Cart
+GET {{hostname}}/api/cart
+Authorization: Bearer {{token}}
+
+### Add Item to Cart
+POST {{hostname}}/api/cart/add
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "serverPlanId": "YOUR_SERVER_PLAN_ID",
+  "quantity": 1
+}
+
+### Update Cart Item Quantity
+PUT {{hostname}}/api/cart/update/YOUR_CART_ITEM_ID
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "quantity": 2
+}
+
+### Remove Item from Cart
+DELETE {{hostname}}/api/cart/remove/YOUR_CART_ITEM_ID
+Authorization: Bearer {{token}}
+
+### Clear Cart
+DELETE {{hostname}}/api/cart/clear
+Authorization: Bearer {{token}}
