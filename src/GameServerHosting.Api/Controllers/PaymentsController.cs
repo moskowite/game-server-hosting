@@ -129,7 +129,7 @@ public class PaymentsController : ControllerBase
     /// Webhook endpoint for Stripe events
     /// </summary>
     /// <returns>Success status</returns>
-    [HttpPost("/api/webhooks/stripe")]
+    [HttpPost("webhook")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -225,7 +225,7 @@ public class PaymentsController : ControllerBase
     /// </summary>
     /// <param name="request">The payment intent request</param>
     /// <returns>The created payment intent with client secret</returns>
-    [HttpPost("create-payment-intent")]
+    [HttpPost("create-intent")]
     [ProducesResponseType(typeof(CreatePaymentIntentResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -284,7 +284,7 @@ public class PaymentsController : ControllerBase
     /// </summary>
     /// <param name="request">The payment intent confirmation request</param>
     /// <returns>The confirmed payment intent</returns>
-    [HttpPost("confirm-payment")]
+    [HttpPost("confirm")]
     [ProducesResponseType(typeof(ConfirmPaymentResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -325,6 +325,73 @@ public class PaymentsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error confirming payment");
+            return StatusCode(500, new { error = "An unexpected error occurred" });
+        }
+    }
+
+    /// <summary>
+    /// Gets a payment by ID
+    /// </summary>
+    /// <param name="id">The payment ID</param>
+    /// <returns>The payment details</returns>
+    [HttpGet("{id}")]
+    [ProducesResponseType(typeof(PaymentDetailsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetPayment(Guid id)
+    {
+        try
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            {
+                _logger.LogWarning("Invalid or missing user ID in token");
+                return Unauthorized(new { error = "Invalid user authentication" });
+            }
+
+            var payment = await _paymentService.GetPaymentByIdAsync(id);
+
+            if (payment == null)
+            {
+                _logger.LogWarning("Payment {PaymentId} not found", id);
+                return NotFound(new { error = "Payment not found" });
+            }
+
+            // Ensure user can only access their own payments
+            if (payment.UserId != userId)
+            {
+                _logger.LogWarning(
+                    "User {UserId} attempted to access payment {PaymentId} belonging to user {PaymentUserId}",
+                    userId, id, payment.UserId);
+                return NotFound(new { error = "Payment not found" });
+            }
+
+            return Ok(new PaymentDetailsResponse
+            {
+                Id = payment.Id,
+                OrderId = payment.OrderId,
+                UserId = payment.UserId,
+                Amount = payment.Amount,
+                Currency = payment.Currency,
+                PaymentMethod = payment.PaymentMethod.ToString(),
+                Status = payment.Status.ToString(),
+                TransactionId = payment.TransactionId,
+                PaymentGateway = payment.PaymentGateway,
+                PaymentIdentifier = payment.PaymentIdentifier,
+                ErrorMessage = payment.ErrorMessage,
+                ErrorCode = payment.ErrorCode,
+                CreatedAt = payment.CreatedAt,
+                UpdatedAt = payment.UpdatedAt,
+                CompletedAt = payment.CompletedAt,
+                RefundedAt = payment.RefundedAt,
+                RefundAmount = payment.RefundAmount,
+                RefundReason = payment.RefundReason
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error retrieving payment {PaymentId}", id);
             return StatusCode(500, new { error = "An unexpected error occurred" });
         }
     }
@@ -607,6 +674,102 @@ public class RefundPaymentResponse
     /// Reason for the refund
     /// </summary>
     public string? Reason { get; set; }
+}
+
+/// <summary>
+/// Response model for payment details
+/// </summary>
+public class PaymentDetailsResponse
+{
+    /// <summary>
+    /// Payment ID
+    /// </summary>
+    public Guid Id { get; set; }
+
+    /// <summary>
+    /// Associated order ID
+    /// </summary>
+    public Guid OrderId { get; set; }
+
+    /// <summary>
+    /// User ID
+    /// </summary>
+    public Guid UserId { get; set; }
+
+    /// <summary>
+    /// Payment amount
+    /// </summary>
+    public decimal Amount { get; set; }
+
+    /// <summary>
+    /// Currency code
+    /// </summary>
+    public string Currency { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Payment method
+    /// </summary>
+    public string PaymentMethod { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Payment status
+    /// </summary>
+    public string Status { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Transaction ID from payment gateway
+    /// </summary>
+    public string? TransactionId { get; set; }
+
+    /// <summary>
+    /// Payment gateway name
+    /// </summary>
+    public string? PaymentGateway { get; set; }
+
+    /// <summary>
+    /// Payment identifier (last 4 digits of card, etc.)
+    /// </summary>
+    public string? PaymentIdentifier { get; set; }
+
+    /// <summary>
+    /// Error message if payment failed
+    /// </summary>
+    public string? ErrorMessage { get; set; }
+
+    /// <summary>
+    /// Error code from payment gateway
+    /// </summary>
+    public string? ErrorCode { get; set; }
+
+    /// <summary>
+    /// Payment creation timestamp
+    /// </summary>
+    public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// Last update timestamp
+    /// </summary>
+    public DateTime UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Payment completion timestamp
+    /// </summary>
+    public DateTime? CompletedAt { get; set; }
+
+    /// <summary>
+    /// Refund timestamp
+    /// </summary>
+    public DateTime? RefundedAt { get; set; }
+
+    /// <summary>
+    /// Refund amount
+    /// </summary>
+    public decimal? RefundAmount { get; set; }
+
+    /// <summary>
+    /// Refund reason
+    /// </summary>
+    public string? RefundReason { get; set; }
 }
 
 #endregion
