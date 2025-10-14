@@ -43,6 +43,9 @@ try
     // Configure Email Settings
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
     
+    // Configure Stripe Settings
+    builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
+    
     var jwtSecretKey = jwtSettings.GetValue<string>("SecretKey") ?? throw new InvalidOperationException("JWT SecretKey is not configured");
     var jwtIssuer = jwtSettings.GetValue<string>("Issuer") ?? "GameServerHosting.Api";
     var jwtAudience = jwtSettings.GetValue<string>("Audience") ?? "GameServerHosting.Client";
@@ -127,6 +130,9 @@ try
 
     // Register Email Service
     builder.Services.AddScoped<IEmailService, EmailService>();
+
+    // Register Stripe Service
+    builder.Services.AddScoped<IStripeService, StripeService>();
 
     // Register Order Validation Service
     builder.Services.AddScoped<IOrderValidationService, OrderValidationService>();
