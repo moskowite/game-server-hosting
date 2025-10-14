@@ -31,7 +31,7 @@ public static class DatabaseExtensions
     /// <summary>
     /// Seeds the database with initial data if needed.
     /// </summary>
-    public static async Task SeedDatabaseAsync(this IServiceProvider serviceProvider)
+    public static Task SeedDatabaseAsync(this IServiceProvider serviceProvider)
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<GameServerDbContext>();
@@ -51,6 +51,7 @@ public static class DatabaseExtensions
             // }
 
             logger.LogInformation("Database seeding completed successfully");
+            return Task.CompletedTask;
         }
         catch (Exception ex)
         {

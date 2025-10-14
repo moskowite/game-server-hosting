@@ -87,7 +87,7 @@ public class Order
     /// <summary>
     /// Customer who placed the order
     /// </summary>
-    public User User { get; set; } = null!;
+    public ApplicationUser User { get; set; } = null!;
 
     /// <summary>
     /// Associated game server (if applicable)
