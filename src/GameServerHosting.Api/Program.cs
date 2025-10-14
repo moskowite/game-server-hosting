@@ -237,6 +237,24 @@ try
 
     var app = builder.Build();
 
+    // Seed the database with initial data
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        try
+        {
+            var context = services.GetRequiredService<GameServerDbContext>();
+            var logger = services.GetRequiredService<ILogger<DatabaseSeeder>>();
+            var seeder = new DatabaseSeeder(context, logger);
+            await seeder.SeedAsync();
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "An error occurred while seeding the database");
+        }
+    }
+
     // Configure the HTTP request pipeline.
     app.UseSerilogRequestLogging();
 
