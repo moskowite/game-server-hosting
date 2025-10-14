@@ -74,7 +74,7 @@ public class ServerProvisioningService : IServerProvisioningService
         _context.GameServers.Add(gameServer);
         
         // Link order to server
-        order.GameServerId = gameServer.Id;
+        order.ServerId = gameServer.Id;
         order.UpdatedAt = DateTime.UtcNow;
         
         await _context.SaveChangesAsync();
@@ -304,11 +304,11 @@ public class ServerProvisioningService : IServerProvisioningService
         }
 
         // Check if server hasn't already been provisioned
-        if (order.GameServerId != null && order.GameServerId != Guid.Empty)
+        if (order.ServerId.HasValue && order.ServerId != Guid.Empty)
         {
             _logger.LogWarning(
                 "Order {OrderId} already has a server {ServerId}",
-                orderId, order.GameServerId);
+                orderId, order.ServerId);
             return false;
         }
 

@@ -32,6 +32,16 @@ public interface IEmailService
     /// <param name="orderDetails">Order details for the email</param>
     /// <returns>Task representing the async operation</returns>
     Task SendOrderConfirmationEmailAsync(string email, string userName, string orderNumber, OrderConfirmationDetails orderDetails);
+
+    /// <summary>
+    /// Sends a generic email with the specified subject and content
+    /// </summary>
+    /// <param name="toEmail">Recipient email address</param>
+    /// <param name="subject">Email subject</param>
+    /// <param name="htmlContent">HTML email content</param>
+    /// <param name="plainTextContent">Plain text email content (optional)</param>
+    /// <returns>Task representing the async operation</returns>
+    Task SendEmailAsync(string toEmail, string subject, string htmlContent, string? plainTextContent = null);
 }
 
 /// <summary>
