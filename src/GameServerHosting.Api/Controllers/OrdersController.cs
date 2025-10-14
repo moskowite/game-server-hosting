@@ -23,17 +23,20 @@ public class OrdersController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<OrdersController> _logger;
     private readonly IOrderValidationService _orderValidationService;
+    private readonly IInvoiceService _invoiceService;
 
     public OrdersController(
         GameServerDbContext context,
         UserManager<ApplicationUser> userManager,
         ILogger<OrdersController> logger,
-        IOrderValidationService orderValidationService)
+        IOrderValidationService orderValidationService,
+        IInvoiceService invoiceService)
     {
         _context = context;
         _userManager = userManager;
         _logger = logger;
         _orderValidationService = orderValidationService;
+        _invoiceService = invoiceService;
     }
 
     /// <summary>
@@ -517,6 +520,116 @@ public class OrdersController : ControllerBase
         {
             _logger.LogError(ex, "Error updating order {OrderId} status", id);
             return StatusCode(500, new { message = "An error occurred while updating order status" });
+        }
+    }
+
+    /// <summary>
+    /// Get invoice/receipt for an order as HTML
+    /// </summary>
+    /// <param name="id">Order ID</param>
+    /// <returns>Invoice HTML</returns>
+    [HttpGet("{id}/invoice")]
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [Produces("text/html")]
+    public async Task<IActionResult> GetOrderInvoice(Guid id)
+    {
+        try
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("Unauthorized invoice retrieval attempt");
+                return Unauthorized(new { message = "User not authenticated" });
+            }
+
+            var userGuid = Guid.Parse(userId);
+
+            // Verify order exists and belongs to user
+            var order = await _context.Orders
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+            if (order == null)
+            {
+                _logger.LogWarning("Order not found for invoice: {OrderId}", id);
+                return NotFound(new { message = "Order not found" });
+            }
+
+            if (order.UserId != userGuid)
+            {
+                _logger.LogWarning("User {UserId} attempted to access invoice for order {OrderId} owned by {OwnerId}",
+                    userId, id, order.UserId);
+                return StatusCode(403, new { message = "You don't have permission to view this invoice" });
+            }
+
+            // Generate invoice HTML
+            var invoiceHtml = await _invoiceService.GenerateInvoiceHtmlAsync(id);
+
+            _logger.LogInformation("Generated invoice for order {OrderId} for user {UserId}", id, userId);
+            
+            return Content(invoiceHtml, "text/html");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating invoice for order {OrderId}", id);
+            return StatusCode(500, new { message = "An error occurred while generating the invoice" });
+        }
+    }
+
+    /// <summary>
+    /// Download invoice/receipt for an order as a file
+    /// </summary>
+    /// <param name="id">Order ID</param>
+    /// <returns>Invoice file (HTML)</returns>
+    [HttpGet("{id}/invoice/download")]
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DownloadOrderInvoice(Guid id)
+    {
+        try
+        {
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("Unauthorized invoice download attempt");
+                return Unauthorized(new { message = "User not authenticated" });
+            }
+
+            var userGuid = Guid.Parse(userId);
+
+            // Verify order exists and belongs to user
+            var order = await _context.Orders
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+            if (order == null)
+            {
+                _logger.LogWarning("Order not found for invoice download: {OrderId}", id);
+                return NotFound(new { message = "Order not found" });
+            }
+
+            if (order.UserId != userGuid)
+            {
+                _logger.LogWarning("User {UserId} attempted to download invoice for order {OrderId} owned by {OwnerId}",
+                    userId, id, order.UserId);
+                return StatusCode(403, new { message = "You don't have permission to download this invoice" });
+            }
+
+            // Generate invoice
+            var invoiceBytes = await _invoiceService.GenerateInvoiceAsync(id);
+            var fileName = $"Invoice-{order.OrderNumber}.html";
+
+            _logger.LogInformation("Downloaded invoice for order {OrderId} for user {UserId}", id, userId);
+            
+            return File(invoiceBytes, "text/html", fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error downloading invoice for order {OrderId}", id);
+            return StatusCode(500, new { message = "An error occurred while downloading the invoice" });
         }
     }
 }
