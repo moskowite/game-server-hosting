@@ -1,0 +1,53 @@
+@baseUrl = https://localhost:7001
+@token = YOUR_JWT_TOKEN_HERE
+@userId = YOUR_USER_ID_HERE
+@serverPlanId = YOUR_SERVER_PLAN_ID_HERE
+@orderId = YOUR_ORDER_ID_HERE
+
+### Create a new order
+POST {{baseUrl}}/api/orders/create
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "serverPlanId": "{{serverPlanId}}",
+  "orderType": "NewServer",
+  "paymentMethod": "Stripe",
+  "billingDetails": "{\"address\": \"123 Main St\", \"city\": \"New York\", \"country\": \"USA\"}"
+}
+
+### Get order by ID
+GET {{baseUrl}}/api/orders/{{orderId}}
+Authorization: Bearer {{token}}
+
+### Get all orders for a user
+GET {{baseUrl}}/api/orders/user/{{userId}}
+Authorization: Bearer {{token}}
+
+### Update order status to Completed
+PUT {{baseUrl}}/api/orders/{{orderId}}/status
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "status": "Completed",
+  "paymentTransactionId": "pi_1234567890"
+}
+
+### Update order status to Failed
+PUT {{baseUrl}}/api/orders/{{orderId}}/status
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "status": "Failed"
+}
+
+### Update order status to Refunded
+PUT {{baseUrl}}/api/orders/{{orderId}}/status
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "status": "Refunded"
+}
