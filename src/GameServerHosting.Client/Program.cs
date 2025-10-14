@@ -12,6 +12,11 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 var apiSettings = builder.Configuration.GetSection("ApiSettings").Get<ApiSettings>() 
     ?? new ApiSettings { BaseUrl = builder.HostEnvironment.BaseAddress };
 
+// Configure Stripe settings
+var stripeSettings = builder.Configuration.GetSection("Stripe").Get<StripeSettings>() 
+    ?? new StripeSettings();
+builder.Services.AddSingleton(stripeSettings);
+
 builder.Services.AddScoped(sp => new HttpClient 
 { 
     BaseAddress = new Uri(apiSettings.BaseUrl) 
@@ -24,5 +29,6 @@ builder.Services.AddScoped<ServerCatalogService>();
 builder.Services.AddScoped<ServerPlansService>();
 builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<CheckoutService>();
+builder.Services.AddScoped<PaymentService>();
 
 await builder.Build().RunAsync();

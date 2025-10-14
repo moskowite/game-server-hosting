@@ -126,7 +126,7 @@
                         <CheckoutStep3BillingInfo />
                         break;
                     case 4:
-                        <CheckoutStep4Payment />
+                        <CheckoutStep4Payment @ref="paymentComponent" />
                         break;
                     case 5:
                         <CheckoutStep5Confirmation />
@@ -249,6 +249,7 @@
     private int currentStep = 1;
     private bool isLoading = true;
     private bool isProcessingPayment = false;
+    private CheckoutStep4Payment? paymentComponent;
 
     protected override async Task OnInitializedAsync()
     {
@@ -296,14 +297,27 @@
 
     private async Task ProcessPayment()
     {
-        isProcessingPayment = true;
-        var success = await CheckoutService.ProcessPaymentAsync();
-        isProcessingPayment = false;
-        
-        if (!success)
+        if (paymentComponent == null)
         {
-            // TODO: Show error message
-            Console.WriteLine("Payment failed");
+            Console.WriteLine("Payment component not initialized");
+            return;
+        }
+
+        isProcessingPayment = true;
+        StateHasChanged();
+        
+        try
+        {
+            await paymentComponent.ProcessPaymentAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Payment processing error: {ex.Message}");
+        }
+        finally
+        {
+            isProcessingPayment = false;
+            StateHasChanged();
         }
     }
 
