@@ -1,0 +1,304 @@
+@page "/dashboard"
+@inject DashboardService DashboardService
+
+<PageTitle>Dashboard - Game Server Hosting</PageTitle>
+
+<div class="dashboard-container">
+    @if (isLoading)
+    {
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading your dashboard...</p>
+        </div>
+    }
+    else if (dashboardData == null)
+    {
+        <div class="alert alert-danger" role="alert">
+            <h4 class="alert-heading">Error Loading Dashboard</h4>
+            <p>Unable to load your dashboard data. Please try refreshing the page.</p>
+            <button class="btn btn-primary" @onclick="LoadDashboardData">Retry</button>
+        </div>
+    }
+    else
+    {
+        <!-- Header Section -->
+        <div class="dashboard-header">
+            <div class="welcome-section">
+                <h1>Welcome back, @dashboardData.UserProfile.FirstName!</h1>
+                <p class="text-muted">Here's what's happening with your game servers</p>
+            </div>
+            <div class="user-info-card">
+                <div class="user-avatar">
+                    @GetInitials(dashboardData.UserProfile.FirstName, dashboardData.UserProfile.LastName)
+                </div>
+                <div class="user-details">
+                    <h5>@dashboardData.UserProfile.FirstName @dashboardData.UserProfile.LastName</h5>
+                    <p class="text-muted">@dashboardData.UserProfile.Email</p>
+                    <span class="badge bg-@(dashboardData.UserProfile.EmailConfirmed ? "success" : "warning")">
+                        @(dashboardData.UserProfile.EmailConfirmed ? "Verified" : "Unverified")
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon bg-primary">
+                    <i class="bi bi-hdd-rack"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>@dashboardData.Stats.TotalServers</h3>
+                    <p>Total Servers</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon bg-success">
+                    <i class="bi bi-play-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>@dashboardData.Stats.RunningServers</h3>
+                    <p>Running Servers</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon bg-info">
+                    <i class="bi bi-receipt"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>@dashboardData.Stats.TotalOrders</h3>
+                    <p>Total Orders</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon bg-warning">
+                    <i class="bi bi-currency-dollar"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>@dashboardData.Stats.TotalSpent.ToString("C")</h3>
+                    <p>Total Spent</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Servers Section -->
+        <div class="section-container">
+            <div class="section-header">
+                <h2><i class="bi bi-server"></i> Active Servers</h2>
+                <button class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-circle"></i> New Server
+                </button>
+            </div>
+            
+            @if (dashboardData.ActiveServers.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Server Name</th>
+                                <th>Game</th>
+                                <th>Status</th>
+                                <th>IP Address</th>
+                                <th>Resources</th>
+                                <th>Expires</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var server in dashboardData.ActiveServers)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@server.ServerName</strong>
+                                        <br />
+                                        <small class="text-muted">@server.ServerTypeName</small>
+                                    </td>
+                                    <td>@server.GameName</td>
+                                    <td>
+                                        <span class="badge bg-@GetStatusColor(server.Status)">
+                                            @server.Status
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(server.IpAddress))
+                                        {
+                                            <code>@server.IpAddress:@server.Port</code>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Pending</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <small>
+                                            @server.CpuCores CPU | @server.RamMb MB RAM | @server.MaxPlayers Players
+                                        </small>
+                                    </td>
+                                    <td>
+                                        @if (server.ExpiresAt.HasValue)
+                                        {
+                                            <span class="@(server.ExpiresAt.Value < DateTime.UtcNow.AddDays(7) ? "text-danger" : "")">
+                                                @server.ExpiresAt.Value.ToString("MMM dd, yyyy")
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" title="Manage">
+                                            <i class="bi bi-gear"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="empty-state">
+                    <i class="bi bi-inbox"></i>
+                    <h3>No Active Servers</h3>
+                    <p>You don't have any servers yet. Create your first server to get started!</p>
+                    <button class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Create Server
+                    </button>
+                </div>
+            }
+        </div>
+
+        <!-- Order History Section -->
+        <div class="section-container">
+            <div class="section-header">
+                <h2><i class="bi bi-clock-history"></i> Order History</h2>
+                <a href="/orders" class="btn btn-outline-primary btn-sm">View All</a>
+            </div>
+            
+            @if (dashboardData.RecentOrders.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Order Number</th>
+                                <th>Type</th>
+                                <th>Server/Plan</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Payment Method</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in dashboardData.RecentOrders)
+                            {
+                                <tr>
+                                    <td><code>@order.OrderNumber</code></td>
+                                    <td>
+                                        <span class="badge bg-secondary">@order.OrderType</span>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(order.ServerName))
+                                        {
+                                            <div>
+                                                <strong>@order.ServerName</strong>
+                                                <br />
+                                                <small class="text-muted">@order.GameName</small>
+                                            </div>
+                                        }
+                                        else if (!string.IsNullOrEmpty(order.PlanName))
+                                        {
+                                            <span>@order.PlanName</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td><strong>@order.TotalAmount.ToString("C")</strong></td>
+                                    <td>
+                                        <span class="badge bg-@GetOrderStatusColor(order.Status)">
+                                            @order.Status
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small>@order.PaymentMethod</small>
+                                    </td>
+                                    <td>
+                                        <small>@order.CreatedAt.ToString("MMM dd, yyyy")</small>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="empty-state">
+                    <i class="bi bi-receipt"></i>
+                    <h3>No Orders Yet</h3>
+                    <p>Your order history will appear here once you make your first purchase.</p>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private DashboardDto? dashboardData;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        isLoading = true;
+        dashboardData = await DashboardService.GetDashboardDataAsync();
+        isLoading = false;
+    }
+
+    private string GetInitials(string firstName, string lastName)
+    {
+        var initials = "";
+        if (!string.IsNullOrEmpty(firstName))
+            initials += firstName[0];
+        if (!string.IsNullOrEmpty(lastName))
+            initials += lastName[0];
+        return initials.ToUpper();
+    }
+
+    private string GetStatusColor(ServerStatus status)
+    {
+        return status switch
+        {
+            ServerStatus.Running => "success",
+            ServerStatus.Stopped => "warning",
+            ServerStatus.Pending => "info",
+            ServerStatus.Suspended => "danger",
+            ServerStatus.Terminated => "secondary",
+            _ => "secondary"
+        };
+    }
+
+    private string GetOrderStatusColor(OrderStatus status)
+    {
+        return status switch
+        {
+            OrderStatus.Completed => "success",
+            OrderStatus.Pending => "warning",
+            OrderStatus.Failed => "danger",
+            OrderStatus.Refunded => "info",
+            _ => "secondary"
+        };
+    }
+}
