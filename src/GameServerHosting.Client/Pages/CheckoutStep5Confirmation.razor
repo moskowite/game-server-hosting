@@ -1,0 +1,255 @@
+@using GameServerHosting.Client.Models
+@using GameServerHosting.Client.Services
+@inject CheckoutService CheckoutService
+@inject NavigationManager NavigationManager
+
+<link href="Pages/CheckoutSteps.css" rel="stylesheet" />
+
+<div class="checkout-step confirmation-step">
+    <div class="confirmation-header">
+        <div class="success-animation">
+            <div class="success-checkmark">
+                <div class="check-icon">
+                    <span class="icon-line line-tip"></span>
+                    <span class="icon-line line-long"></span>
+                    <div class="icon-circle"></div>
+                    <div class="icon-fix"></div>
+                </div>
+            </div>
+        </div>
+        
+        <h2 class="confirmation-title">Order Confirmed!</h2>
+        <p class="confirmation-message">Thank you for your purchase. Your servers are being provisioned.</p>
+        
+        @if (CheckoutService.State.CompletedOrder != null)
+        {
+            <div class="order-number">
+                <span>Order Number:</span>
+                <strong>@CheckoutService.State.CompletedOrder.OrderNumber</strong>
+            </div>
+        }
+    </div>
+
+    <div class="confirmation-content">
+        <div class="confirmation-section">
+            <h3 class="section-title">
+                <span class="bi bi-box-seam"></span>
+                Order Details
+            </h3>
+            
+            <div class="order-items">
+                @foreach (var item in CheckoutService.State.CartItems)
+                {
+                    var config = CheckoutService.State.ServerConfigurations.GetValueOrDefault(item.Id);
+                    
+                    <div class="order-item">
+                        <div class="item-icon">
+                            <span class="bi @GetServerIcon(item.ServerPlan?.Name ?? "")"></span>
+                        </div>
+                        <div class="item-info">
+                            <h4 class="item-name">@item.ServerPlan?.Name</h4>
+                            @if (config != null)
+                            {
+                                <p class="server-name">
+                                    <span class="bi bi-tag"></span>
+                                    @config.ServerName
+                                </p>
+                                <p class="server-region">
+                                    <span class="bi bi-geo-alt"></span>
+                                    @GetRegionName(config.Region)
+                                </p>
+                            }
+                            <div class="item-qty">Quantity: @item.Quantity</div>
+                        </div>
+                        <div class="item-price">
+                            $@((item.Price * item.Quantity).ToString("F2"))
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="order-total">
+                <div class="total-row">
+                    <span>Subtotal</span>
+                    <span>$@CheckoutService.State.Subtotal.ToString("F2")</span>
+                </div>
+                @if (CheckoutService.State.Discount > 0)
+                {
+                    <div class="total-row discount">
+                        <span>Discount</span>
+                        <span>-$@CheckoutService.State.Discount.ToString("F2")</span>
+                    </div>
+                }
+                <div class="total-row">
+                    <span>Tax</span>
+                    <span>$@CheckoutService.State.Tax.ToString("F2")</span>
+                </div>
+                <div class="total-divider"></div>
+                <div class="total-row final">
+                    <span>Total Paid</span>
+                    <span>$@CheckoutService.State.Total.ToString("F2")</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="confirmation-section">
+            <h3 class="section-title">
+                <span class="bi bi-receipt"></span>
+                Billing Information
+            </h3>
+            
+            @if (CheckoutService.State.BillingDetails != null)
+            {
+                <div class="billing-info">
+                    <div class="info-row">
+                        <span class="bi bi-person"></span>
+                        <span>@CheckoutService.State.BillingDetails.FirstName @CheckoutService.State.BillingDetails.LastName</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="bi bi-envelope"></span>
+                        <span>@CheckoutService.State.BillingDetails.Email</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="bi bi-geo-alt"></span>
+                        <span>
+                            @CheckoutService.State.BillingDetails.Address,
+                            @CheckoutService.State.BillingDetails.City,
+                            @CheckoutService.State.BillingDetails.State
+                            @CheckoutService.State.BillingDetails.ZipCode,
+                            @CheckoutService.State.BillingDetails.Country
+                        </span>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="confirmation-section">
+            <h3 class="section-title">
+                <span class="bi bi-credit-card"></span>
+                Payment Method
+            </h3>
+            
+            @if (CheckoutService.State.PaymentDetails != null)
+            {
+                <div class="payment-info">
+                    <span class="bi @GetPaymentIcon()"></span>
+                    <span>@CheckoutService.State.PaymentDetails.PaymentMethod</span>
+                    @if (CheckoutService.State.PaymentDetails.PaymentMethod == PaymentMethod.CreditCard && 
+                         !string.IsNullOrEmpty(CheckoutService.State.PaymentDetails.CardNumber))
+                    {
+                        <span class="card-ending">ending in @GetLastFourDigits(CheckoutService.State.PaymentDetails.CardNumber)</span>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="next-steps">
+            <h3 class="section-title">
+                <span class="bi bi-list-check"></span>
+                What's Next?
+            </h3>
+            
+            <div class="steps-list">
+                <div class="next-step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h4>Server Provisioning</h4>
+                        <p>Your servers are being set up and configured. This typically takes 5-10 minutes.</p>
+                    </div>
+                </div>
+                <div class="next-step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h4>Email Confirmation</h4>
+                        <p>We've sent a confirmation email with your server details and access information.</p>
+                    </div>
+                </div>
+                <div class="next-step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h4>Access Your Servers</h4>
+                        <p>Once ready, you can access and manage your servers from your dashboard.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="confirmation-actions">
+            <button class="btn btn-primary btn-lg" @onclick="GoToDashboard">
+                <span class="bi bi-speedometer2"></span>
+                Go to Dashboard
+            </button>
+            <button class="btn btn-outline-secondary btn-lg" @onclick="ViewServers">
+                <span class="bi bi-server"></span>
+                View My Servers
+            </button>
+        </div>
+
+        <div class="support-info">
+            <span class="bi bi-headset"></span>
+            <div>
+                <strong>Need Help?</strong>
+                <p>Our support team is available 24/7 to assist you. Contact us at support@gameserverhosting.com</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private void GoToDashboard()
+    {
+        NavigationManager.NavigateTo("/dashboard");
+    }
+
+    private void ViewServers()
+    {
+        NavigationManager.NavigateTo("/servers");
+    }
+
+    private string GetServerIcon(string planName)
+    {
+        var lowerName = planName.ToLower();
+        if (lowerName.Contains("minecraft")) return "bi-square-fill";
+        if (lowerName.Contains("rust")) return "bi-hammer";
+        if (lowerName.Contains("ark")) return "bi-egg";
+        if (lowerName.Contains("valheim")) return "bi-shield-fill";
+        if (lowerName.Contains("terraria")) return "bi-tree-fill";
+        if (lowerName.Contains("counter") || lowerName.Contains("cs:go")) return "bi-crosshair";
+        return "bi-server";
+    }
+
+    private string GetRegionName(string region)
+    {
+        return region switch
+        {
+            "us-east" => "US East (New York)",
+            "us-west" => "US West (Los Angeles)",
+            "us-central" => "US Central (Chicago)",
+            "eu-west" => "EU West (London)",
+            "eu-central" => "EU Central (Frankfurt)",
+            "asia-pacific" => "Asia Pacific (Singapore)",
+            "asia-east" => "Asia East (Tokyo)",
+            _ => region
+        };
+    }
+
+    private string GetPaymentIcon()
+    {
+        return CheckoutService.State.PaymentDetails?.PaymentMethod switch
+        {
+            PaymentMethod.CreditCard => "bi-credit-card",
+            PaymentMethod.PayPal => "bi-paypal",
+            PaymentMethod.BankTransfer => "bi-bank",
+            PaymentMethod.Cryptocurrency => "bi-currency-bitcoin",
+            _ => "bi-credit-card"
+        };
+    }
+
+    private string GetLastFourDigits(string cardNumber)
+    {
+        if (string.IsNullOrEmpty(cardNumber) || cardNumber.Length < 4)
+            return "****";
+        
+        return cardNumber.Replace(" ", "").Substring(Math.Max(0, cardNumber.Replace(" ", "").Length - 4));
+    }
+}

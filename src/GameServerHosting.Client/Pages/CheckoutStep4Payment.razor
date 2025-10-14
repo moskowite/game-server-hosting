@@ -1,0 +1,263 @@
+@using GameServerHosting.Client.Models
+@using GameServerHosting.Client.Services
+@inject CheckoutService CheckoutService
+
+<link href="Pages/CheckoutSteps.css" rel="stylesheet" />
+
+<div class="checkout-step">
+    <div class="step-header">
+        <h2 class="step-title">
+            <span class="bi bi-credit-card"></span>
+            Payment Information
+        </h2>
+        <p class="step-description">Securely enter your payment details</p>
+    </div>
+
+    <div class="payment-form">
+        <div class="payment-methods">
+            <h4 class="section-title">Select Payment Method</h4>
+            
+            <div class="method-options">
+                <div class="method-option @(paymentDetails.PaymentMethod == PaymentMethod.CreditCard ? "active" : "")"
+                     @onclick="() => SelectPaymentMethod(PaymentMethod.CreditCard)">
+                    <span class="bi bi-credit-card-2-front"></span>
+                    <span>Credit/Debit Card</span>
+                </div>
+                <div class="method-option @(paymentDetails.PaymentMethod == PaymentMethod.PayPal ? "active" : "")"
+                     @onclick="() => SelectPaymentMethod(PaymentMethod.PayPal)">
+                    <span class="bi bi-paypal"></span>
+                    <span>PayPal</span>
+                </div>
+                <div class="method-option @(paymentDetails.PaymentMethod == PaymentMethod.BankTransfer ? "active" : "")"
+                     @onclick="() => SelectPaymentMethod(PaymentMethod.BankTransfer)">
+                    <span class="bi bi-bank"></span>
+                    <span>Bank Transfer</span>
+                </div>
+                <div class="method-option @(paymentDetails.PaymentMethod == PaymentMethod.Cryptocurrency ? "active" : "")"
+                     @onclick="() => SelectPaymentMethod(PaymentMethod.Cryptocurrency)">
+                    <span class="bi bi-currency-bitcoin"></span>
+                    <span>Cryptocurrency</span>
+                </div>
+            </div>
+        </div>
+
+        @if (paymentDetails.PaymentMethod == PaymentMethod.CreditCard)
+        {
+            <div class="payment-details">
+                <div class="form-group">
+                    <label class="form-label required">Card Number</label>
+                    <input type="text" 
+                           class="form-control card-input" 
+                           placeholder="1234 5678 9012 3456"
+                           @bind="paymentDetails.CardNumber"
+                           @bind:event="oninput"
+                           @onchange="UpdatePaymentDetails"
+                           maxlength="19" />
+                    <div class="card-brands">
+                        <span class="bi bi-credit-card"></span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required">Cardholder Name</label>
+                    <input type="text" 
+                           class="form-control" 
+                           placeholder="JOHN DOE"
+                           @bind="paymentDetails.CardholderName"
+                           @bind:event="oninput"
+                           @onchange="UpdatePaymentDetails" />
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group expiry-group">
+                        <label class="form-label required">Expiration Date</label>
+                        <div class="expiry-inputs">
+                            <select class="form-select" 
+                                    @bind="paymentDetails.ExpirationMonth"
+                                    @onchange="UpdatePaymentDetails">
+                                <option value="0">MM</option>
+                                @for (int i = 1; i <= 12; i++)
+                                {
+                                    <option value="@i">@i.ToString("D2")</option>
+                                }
+                            </select>
+                            <span class="expiry-separator">/</span>
+                            <select class="form-select" 
+                                    @bind="paymentDetails.ExpirationYear"
+                                    @onchange="UpdatePaymentDetails">
+                                <option value="0">YYYY</option>
+                                @for (int year = DateTime.Now.Year; year <= DateTime.Now.Year + 10; year++)
+                                {
+                                    <option value="@year">@year</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group cvv-group">
+                        <label class="form-label required">CVV</label>
+                        <input type="text" 
+                               class="form-control" 
+                               placeholder="123"
+                               @bind="paymentDetails.CVV"
+                               @bind:event="oninput"
+                               @onchange="UpdatePaymentDetails"
+                               maxlength="4" />
+                        <small class="form-text">3-4 digit code on back of card</small>
+                    </div>
+                </div>
+
+                <div class="save-payment">
+                    <input type="checkbox" 
+                           id="save-payment" 
+                           @bind="paymentDetails.SavePaymentMethod"
+                           @onchange="UpdatePaymentDetails" />
+                    <label for="save-payment">
+                        <span class="bi bi-bookmark"></span>
+                        Save this payment method for future purchases
+                    </label>
+                </div>
+            </div>
+        }
+        else if (paymentDetails.PaymentMethod == PaymentMethod.PayPal)
+        {
+            <div class="payment-details">
+                <div class="paypal-info">
+                    <span class="bi bi-paypal paypal-icon"></span>
+                    <h4>Pay with PayPal</h4>
+                    <p>You'll be redirected to PayPal to complete your purchase securely.</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">PayPal Email (Optional)</label>
+                    <input type="email" 
+                           class="form-control" 
+                           placeholder="your-email@example.com"
+                           @bind="paymentDetails.PayPalEmail"
+                           @onchange="UpdatePaymentDetails" />
+                </div>
+            </div>
+        }
+        else if (paymentDetails.PaymentMethod == PaymentMethod.BankTransfer)
+        {
+            <div class="payment-details">
+                <div class="bank-info">
+                    <span class="bi bi-bank2 bank-icon"></span>
+                    <h4>Bank Transfer</h4>
+                    <p>Transfer funds directly from your bank account. Processing may take 2-3 business days.</p>
+                </div>
+            </div>
+        }
+        else if (paymentDetails.PaymentMethod == PaymentMethod.Cryptocurrency)
+        {
+            <div class="payment-details">
+                <div class="crypto-info">
+                    <span class="bi bi-currency-bitcoin crypto-icon"></span>
+                    <h4>Pay with Cryptocurrency</h4>
+                    <p>We accept Bitcoin, Ethereum, and other major cryptocurrencies.</p>
+                </div>
+            </div>
+        }
+
+        <div class="order-review">
+            <h4 class="section-title">Order Summary</h4>
+            <div class="review-summary">
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span>${{CheckoutService.State.Subtotal.ToString("F2")}}</span>
+                </div>
+                @if (CheckoutService.State.Discount > 0)
+                {
+                    <div class="summary-row discount">
+                        <span><span class="bi bi-tag"></span> Discount</span>
+                        <span>-$@CheckoutService.State.Discount.ToString("F2")</span>
+                    </div>
+                }
+                <div class="summary-row">
+                    <span>Tax</span>
+                    <span>$@CheckoutService.State.Tax.ToString("F2")</span>
+                </div>
+                <div class="summary-divider"></div>
+                <div class="summary-row total">
+                    <span>Total Due</span>
+                    <span>$@CheckoutService.State.Total.ToString("F2")</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="terms-agreement">
+            <input type="checkbox" 
+                   id="agree-terms" 
+                   @bind="paymentDetails.AgreeToTerms"
+                   @onchange="UpdatePaymentDetails" />
+            <label for="agree-terms">
+                I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a>
+            </label>
+        </div>
+
+        @if (IsPaymentFormValid())
+        {
+            <div class="payment-status success">
+                <span class="bi bi-shield-check"></span>
+                <span>Ready to process payment</span>
+            </div>
+        }
+        else
+        {
+            <div class="payment-status warning">
+                <span class="bi bi-exclamation-triangle"></span>
+                <span>Please complete payment information and agree to terms</span>
+            </div>
+        }
+
+        <div class="security-notice">
+            <span class="bi bi-lock-fill"></span>
+            <div>
+                <strong>Secure Payment</strong>
+                <p>Your payment information is encrypted and secure. We never store your full card details.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private PaymentDetails paymentDetails = new();
+
+    protected override void OnInitialized()
+    {
+        if (CheckoutService.State.PaymentDetails != null)
+        {
+            paymentDetails = CheckoutService.State.PaymentDetails;
+        }
+    }
+
+    private void SelectPaymentMethod(PaymentMethod method)
+    {
+        paymentDetails.PaymentMethod = method;
+        UpdatePaymentDetails();
+    }
+
+    private void UpdatePaymentDetails()
+    {
+        CheckoutService.UpdatePaymentDetails(paymentDetails);
+    }
+
+    private bool IsPaymentFormValid()
+    {
+        if (!paymentDetails.AgreeToTerms)
+            return false;
+
+        return paymentDetails.PaymentMethod switch
+        {
+            PaymentMethod.CreditCard => !string.IsNullOrWhiteSpace(paymentDetails.CardNumber) &&
+                                       !string.IsNullOrWhiteSpace(paymentDetails.CardholderName) &&
+                                       paymentDetails.ExpirationMonth > 0 &&
+                                       paymentDetails.ExpirationYear > 0 &&
+                                       !string.IsNullOrWhiteSpace(paymentDetails.CVV) &&
+                                       paymentDetails.CVV.Length >= 3,
+            PaymentMethod.PayPal => true,
+            PaymentMethod.BankTransfer => true,
+            PaymentMethod.Cryptocurrency => true,
+            _ => false
+        };
+    }
+}
