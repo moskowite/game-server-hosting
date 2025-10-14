@@ -1,0 +1,325 @@
+@page "/cart"
+@using GameServerHosting.Client.Models
+@using GameServerHosting.Client.Services
+@inject CartService CartService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<PageTitle>Shopping Cart</PageTitle>
+
+<div class="cart-container">
+    <div class="cart-header">
+        <h1 class="cart-title">
+            <span class="bi bi-cart3"></span>
+            Shopping Cart
+        </h1>
+        <p class="cart-subtitle">Review your items and proceed to checkout</p>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-container">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading cart...</span>
+            </div>
+            <p class="loading-text">Loading your cart...</p>
+        </div>
+    }
+    else if (!CartService.CartItems.Any())
+    {
+        <div class="empty-cart">
+            <div class="empty-icon">
+                <span class="bi bi-cart-x"></span>
+            </div>
+            <h2>Your cart is empty</h2>
+            <p>Start adding some awesome game servers to your cart!</p>
+            <button class="btn btn-primary" @onclick="NavigateToServers">
+                <span class="bi bi-server"></span>
+                Browse Servers
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="cart-content">
+            <div class="cart-items">
+                <div class="items-header">
+                    <h3>Items (@CartService.ItemCount)</h3>
+                    <button class="btn btn-sm btn-outline-danger" @onclick="ClearCart">
+                        <span class="bi bi-trash"></span>
+                        Clear Cart
+                    </button>
+                </div>
+
+                @foreach (var item in CartService.CartItems)
+                {
+                    <div class="cart-item">
+                        <div class="item-image">
+                            <span class="bi @GetServerIcon(item.ServerPlan?.Name ?? "")"></span>
+                        </div>
+                        
+                        <div class="item-details">
+                            <h4 class="item-name">@item.ServerPlan?.Name</h4>
+                            <p class="item-description">@item.ServerPlan?.Description</p>
+                            <div class="item-meta">
+                                <span class="meta-badge">
+                                    <span class="bi bi-clock"></span>
+                                    @GetBillingCycleText(item.ServerPlan?.BillingCycle)
+                                </span>
+                                @if (item.ServerPlan?.DiscountPercentage > 0)
+                                {
+                                    <span class="meta-badge discount">
+                                        <span class="bi bi-tag"></span>
+                                        @item.ServerPlan.DiscountPercentage% Off
+                                    </span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="item-quantity">
+                            <label class="quantity-label">Quantity</label>
+                            <div class="quantity-controls">
+                                <button class="btn-quantity" 
+                                        @onclick="() => DecreaseQuantity(item)"
+                                        disabled="@(item.Quantity <= 1)">
+                                    <span class="bi bi-dash"></span>
+                                </button>
+                                <input type="number" 
+                                       class="quantity-input" 
+                                       min="1" 
+                                       max="99"
+                                       value="@item.Quantity"
+                                       @onchange="(e) => UpdateQuantity(item, e)" />
+                                <button class="btn-quantity" 
+                                        @onclick="() => IncreaseQuantity(item)"
+                                        disabled="@(item.Quantity >= 99)">
+                                    <span class="bi bi-plus"></span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="item-price">
+                            <div class="price-label">Price</div>
+                            <div class="price-value">@FormatPrice(item.Price)</div>
+                            @if (item.Quantity > 1)
+                            {
+                                <div class="price-each">@FormatPrice(item.Price) each</div>
+                            }
+                        </div>
+
+                        <div class="item-total">
+                            <div class="total-label">Total</div>
+                            <div class="total-value">@FormatPrice(item.Price * item.Quantity)</div>
+                        </div>
+
+                        <div class="item-actions">
+                            <button class="btn-remove" 
+                                    @onclick="() => RemoveItem(item)"
+                                    title="Remove from cart">
+                                <span class="bi bi-trash"></span>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="cart-summary">
+                <div class="summary-card">
+                    <h3 class="summary-title">Order Summary</h3>
+                    
+                    <div class="summary-details">
+                        <div class="summary-row">
+                            <span class="summary-label">Items</span>
+                            <span class="summary-value">@CartService.ItemCount</span>
+                        </div>
+                        
+                        <div class="summary-row">
+                            <span class="summary-label">Subtotal</span>
+                            <span class="summary-value">@FormatPrice(subtotal)</span>
+                        </div>
+
+                        @if (discount > 0)
+                        {
+                            <div class="summary-row discount">
+                                <span class="summary-label">
+                                    <span class="bi bi-tag"></span>
+                                    Discount
+                                </span>
+                                <span class="summary-value">-@FormatPrice(discount)</span>
+                            </div>
+                        }
+
+                        <div class="summary-divider"></div>
+
+                        <div class="summary-row total">
+                            <span class="summary-label">Total</span>
+                            <span class="summary-value">@FormatPrice(total)</span>
+                        </div>
+
+                        <div class="tax-note">
+                            <span class="bi bi-info-circle"></span>
+                            Taxes calculated at checkout
+                        </div>
+                    </div>
+
+                    <div class="summary-actions">
+                        <button class="btn btn-primary btn-checkout" @onclick="ProceedToCheckout">
+                            <span class="bi bi-credit-card"></span>
+                            Proceed to Checkout
+                        </button>
+                        <button class="btn btn-outline-secondary btn-continue" @onclick="NavigateToServers">
+                            <span class="bi bi-arrow-left"></span>
+                            Continue Shopping
+                        </button>
+                    </div>
+                </div>
+
+                <div class="promo-code-card">
+                    <h4 class="promo-title">
+                        <span class="bi bi-tag"></span>
+                        Have a promo code?
+                    </h4>
+                    <div class="promo-input-group">
+                        <input type="text" 
+                               class="form-control promo-input" 
+                               placeholder="Enter code"
+                               @bind="promoCode" />
+                        <button class="btn btn-secondary" @onclick="ApplyPromoCode">
+                            Apply
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private string promoCode = "";
+    private decimal subtotal => CartService.TotalPrice;
+    private decimal discount = 0;
+    private decimal total => subtotal - discount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCart();
+        CartService.OnCartUpdated += OnCartUpdated;
+    }
+
+    private async Task LoadCart()
+    {
+        isLoading = true;
+        await CartService.InitializeAsync();
+        await CartService.RefreshAsync();
+        CalculatePricing();
+        isLoading = false;
+    }
+
+    private void OnCartUpdated(CartNotification notification)
+    {
+        CalculatePricing();
+        StateHasChanged();
+    }
+
+    private void CalculatePricing()
+    {
+        // Calculate discount based on items with discount percentage
+        discount = CartService.CartItems
+            .Where(item => item.ServerPlan?.DiscountPercentage > 0)
+            .Sum(item => item.Price * item.Quantity * (item.ServerPlan!.DiscountPercentage / 100m));
+    }
+
+    private async Task IncreaseQuantity(CartItemDto item)
+    {
+        if (item.Quantity < 99)
+        {
+            await CartService.UpdateQuantityAsync(item.Id, item.Quantity + 1);
+        }
+    }
+
+    private async Task DecreaseQuantity(CartItemDto item)
+    {
+        if (item.Quantity > 1)
+        {
+            await CartService.UpdateQuantityAsync(item.Id, item.Quantity - 1);
+        }
+    }
+
+    private async Task UpdateQuantity(CartItemDto item, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newQuantity))
+        {
+            if (newQuantity >= 1 && newQuantity <= 99)
+            {
+                await CartService.UpdateQuantityAsync(item.Id, newQuantity);
+            }
+        }
+    }
+
+    private async Task RemoveItem(CartItemDto item)
+    {
+        await CartService.RemoveItemAsync(item.Id);
+    }
+
+    private async Task ClearCart()
+    {
+        if (await JSConfirm("Are you sure you want to clear your cart?"))
+        {
+            await CartService.ClearCartAsync();
+        }
+    }
+
+    private async Task<bool> JSConfirm(string message)
+    {
+        // For now, just return true. In production, use JSInterop for confirm dialog
+        return true;
+    }
+
+    private void ApplyPromoCode()
+    {
+        // TODO: Implement promo code validation and application
+        if (!string.IsNullOrWhiteSpace(promoCode))
+        {
+            Console.WriteLine($"Applying promo code: {promoCode}");
+        }
+    }
+
+    private void ProceedToCheckout()
+    {
+        // TODO: Navigate to checkout page
+        NavigationManager.NavigateTo("/checkout");
+    }
+
+    private void NavigateToServers()
+    {
+        NavigationManager.NavigateTo("/servers");
+    }
+
+    private string GetServerIcon(string planName)
+    {
+        var lowerName = planName.ToLower();
+        if (lowerName.Contains("minecraft")) return "bi-square-fill";
+        if (lowerName.Contains("rust")) return "bi-hammer";
+        if (lowerName.Contains("ark")) return "bi-egg";
+        if (lowerName.Contains("valheim")) return "bi-shield-fill";
+        if (lowerName.Contains("terraria")) return "bi-tree-fill";
+        if (lowerName.Contains("counter") || lowerName.Contains("cs:go")) return "bi-crosshair";
+        return "bi-server";
+    }
+
+    private string GetBillingCycleText(GameServerHosting.Shared.Enums.BillingCycle? billingCycle)
+    {
+        return billingCycle?.ToString() ?? "Monthly";
+    }
+
+    private string FormatPrice(decimal price)
+    {
+        return $"${price:F2}";
+    }
+
+    public void Dispose()
+    {
+        CartService.OnCartUpdated -= OnCartUpdated;
+    }
+}
