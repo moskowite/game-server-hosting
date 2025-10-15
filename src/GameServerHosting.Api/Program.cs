@@ -151,6 +151,10 @@ try
     // Register Server Provisioning Services
     builder.Services.AddHttpClient<ICloudProviderService, DigitalOceanProviderService>();
     builder.Services.AddScoped<IServerProvisioningService, ServerProvisioningService>();
+    
+    // Register Server Management Services
+    builder.Services.AddScoped<IServerManagementService, ServerManagementService>();
+    builder.Services.AddScoped<IServerStatusNotificationService, ServerStatusNotificationService>();
 
     // Configure CORS
     var corsConfig = builder.Configuration.GetSection("Cors");
