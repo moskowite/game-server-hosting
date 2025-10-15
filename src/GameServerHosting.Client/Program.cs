@@ -17,12 +17,25 @@ var stripeSettings = builder.Configuration.GetSection("Stripe").Get<StripeSettin
     ?? new StripeSettings();
 builder.Services.AddSingleton(stripeSettings);
 
-builder.Services.AddScoped(sp => new HttpClient 
-{ 
-    BaseAddress = new Uri(apiSettings.BaseUrl) 
+// Register AuthenticationService as singleton so it persists across components
+builder.Services.AddSingleton<AuthenticationService>();
+
+// Configure HttpClient with authentication handler
+builder.Services.AddScoped<AuthenticatedHttpMessageHandler>();
+builder.Services.AddScoped(sp =>
+{
+    var authHandler = sp.GetRequiredService<AuthenticatedHttpMessageHandler>();
+    authHandler.InnerHandler = new HttpClientHandler();
+    
+    var httpClient = new HttpClient(authHandler)
+    {
+        BaseAddress = new Uri(apiSettings.BaseUrl)
+    };
+    
+    return httpClient;
 });
 
-// Register services
+// Register application services
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ServerCatalogService>();

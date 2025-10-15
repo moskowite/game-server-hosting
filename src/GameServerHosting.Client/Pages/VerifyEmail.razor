@@ -1,0 +1,142 @@
+@page "/verify-email"
+@using GameServerHosting.Client.Services
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h1>Email Verification</h1>
+        </div>
+
+        @if (_isVerifying)
+        {
+            <div class="verification-status">
+                <div class="spinner-large"></div>
+                <p>Verifying your email address...</p>
+            </div>
+        }
+        else if (_verificationSuccess)
+        {
+            <div class="alert alert-success">
+                <span class="bi bi-check-circle-fill"></span>
+                <div>
+                    <strong>Email verified successfully!</strong>
+                    <p>Your account has been activated. You can now log in.</p>
+                </div>
+            </div>
+            <button @onclick="GoToLogin" class="btn btn-primary btn-block">
+                Continue to Login
+            </button>
+        }
+        else
+        {
+            <div class="alert alert-error">
+                <span class="bi bi-exclamation-triangle-fill"></span>
+                <div>
+                    <strong>Verification failed</strong>
+                    <p>@_errorMessage</p>
+                </div>
+            </div>
+            
+            <div class="verification-actions">
+                <button @onclick="ResendVerification" class="btn btn-secondary" disabled="@_isResending">
+                    @if (_isResending)
+                    {
+                        <span class="spinner-border spinner-border-sm"></span>
+                        <span>Resending...</span>
+                    }
+                    else
+                    {
+                        <span class="bi bi-envelope"></span>
+                        <span>Resend Verification Email</span>
+                    }
+                </button>
+                <a href="/login" class="btn btn-outline">Back to Login</a>
+            </div>
+
+            @if (_resendSuccess)
+            {
+                <div class="alert alert-info" style="margin-top: 1rem;">
+                    <span class="bi bi-info-circle-fill"></span>
+                    Verification email has been resent. Please check your inbox.
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Email { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Token { get; set; }
+
+    private bool _isVerifying = true;
+    private bool _verificationSuccess = false;
+    private string _errorMessage = "The verification link is invalid or has expired.";
+    private bool _isResending = false;
+    private bool _resendSuccess = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if we have email and token parameters
+        if (string.IsNullOrEmpty(Email) || string.IsNullOrEmpty(Token))
+        {
+            _isVerifying = false;
+            _errorMessage = "Invalid verification link. Please check your email for the correct link.";
+            return;
+        }
+
+        // Attempt to verify email
+        try
+        {
+            var result = await AuthService.VerifyEmailAsync(Email, Token);
+            _verificationSuccess = result.Success;
+            
+            if (!result.Success)
+            {
+                _errorMessage = result.Message ?? "Email verification failed.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"An error occurred during verification: {ex.Message}";
+        }
+        finally
+        {
+            _isVerifying = false;
+        }
+    }
+
+    private void GoToLogin()
+    {
+        Navigation.NavigateTo("/login");
+    }
+
+    private async Task ResendVerification()
+    {
+        if (string.IsNullOrEmpty(Email))
+        {
+            return;
+        }
+
+        _isResending = true;
+        _resendSuccess = false;
+
+        try
+        {
+            var result = await AuthService.ResendVerificationEmailAsync(Email);
+            _resendSuccess = result.Success;
+        }
+        catch
+        {
+            // Ignore errors - the API returns success anyway for security
+        }
+        finally
+        {
+            _isResending = false;
+        }
+    }
+}

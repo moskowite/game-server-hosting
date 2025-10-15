@@ -1,0 +1,128 @@
+@using GameServerHosting.Client.Services
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+
+@if (AuthService.IsAuthenticated)
+{
+    <div class="user-profile-menu" @onclick:stopPropagation="true">
+        <button class="profile-trigger" @onclick="ToggleDropdown" aria-label="User menu">
+            <div class="profile-avatar">
+                <span>@GetUserInitials()</span>
+            </div>
+            <div class="profile-info">
+                <span class="profile-name">@GetUserName()</span>
+                <span class="profile-email">@GetUserEmail()</span>
+            </div>
+            <span class="bi bi-chevron-down dropdown-icon"></span>
+        </button>
+
+        @if (_isDropdownOpen)
+        {
+            <div class="profile-dropdown">
+                <div class="dropdown-header">
+                    <div class="dropdown-avatar">
+                        <span>@GetUserInitials()</span>
+                    </div>
+                    <div class="dropdown-user-info">
+                        <strong>@GetUserName()</strong>
+                        <small>@GetUserEmail()</small>
+                    </div>
+                </div>
+
+                <div class="dropdown-divider"></div>
+
+                <nav class="dropdown-menu">
+                    <a href="/dashboard" class="dropdown-item" @onclick="CloseDropdown">
+                        <span class="bi bi-speedometer2"></span>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="/settings" class="dropdown-item" @onclick="CloseDropdown">
+                        <span class="bi bi-gear"></span>
+                        <span>Settings</span>
+                    </a>
+                    <a href="/profile" class="dropdown-item" @onclick="CloseDropdown">
+                        <span class="bi bi-person"></span>
+                        <span>Profile</span>
+                    </a>
+                </nav>
+
+                <div class="dropdown-divider"></div>
+
+                <button class="dropdown-item logout-item" @onclick="HandleLogout">
+                    <span class="bi bi-box-arrow-right"></span>
+                    <span>Logout</span>
+                </button>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="auth-actions">
+        <a href="/login" class="btn btn-ghost">Sign In</a>
+        <a href="/register" class="btn btn-primary">Sign Up</a>
+    </div>
+}
+
+@code {
+    private bool _isDropdownOpen = false;
+
+    protected override void OnInitialized()
+    {
+        AuthService.OnAuthStateChanged += HandleAuthStateChanged;
+    }
+
+    private void HandleAuthStateChanged(AuthStateChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleDropdown()
+    {
+        _isDropdownOpen = !_isDropdownOpen;
+    }
+
+    private void CloseDropdown()
+    {
+        _isDropdownOpen = false;
+    }
+
+    private async Task HandleLogout()
+    {
+        CloseDropdown();
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/");
+    }
+
+    private string GetUserInitials()
+    {
+        var userName = AuthService.CurrentAuthState.UserName ?? "";
+        if (string.IsNullOrEmpty(userName))
+        {
+            return "U";
+        }
+
+        var parts = userName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        }
+
+        return userName.Length >= 2 ? userName.Substring(0, 2).ToUpper() : userName.ToUpper();
+    }
+
+    private string GetUserName()
+    {
+        return AuthService.CurrentAuthState.UserName ?? "User";
+    }
+
+    private string GetUserEmail()
+    {
+        return AuthService.CurrentAuthState.Email ?? "";
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthStateChanged -= HandleAuthStateChanged;
+    }
+}

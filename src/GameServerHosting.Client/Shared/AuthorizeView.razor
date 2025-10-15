@@ -1,0 +1,88 @@
+@using GameServerHosting.Client.Services
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+
+@if (_isChecking)
+{
+    <div class="auth-checking">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+}
+else if (AuthService.IsAuthenticated)
+{
+    @Authorized
+}
+else
+{
+    @if (NotAuthorized != null)
+    {
+        @NotAuthorized
+    }
+    else
+    {
+        // Default not authorized message
+        <div class="not-authorized">
+            <div class="not-authorized-card">
+                <span class="bi bi-lock-fill"></span>
+                <h2>Authentication Required</h2>
+                <p>You need to be logged in to access this page.</p>
+                <button @onclick="RedirectToLogin" class="btn btn-primary">
+                    Sign In
+                </button>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public RenderFragment? Authorized { get; set; }
+
+    [Parameter]
+    public RenderFragment? NotAuthorized { get; set; }
+
+    [Parameter]
+    public bool RedirectIfNotAuthenticated { get; set; } = true;
+
+    private bool _isChecking = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Initialize auth service if not already done
+        await AuthService.InitializeAsync();
+
+        // Subscribe to auth state changes
+        AuthService.OnAuthStateChanged += HandleAuthStateChanged;
+
+        _isChecking = false;
+
+        // Redirect to login if not authenticated and redirect is enabled
+        if (!AuthService.IsAuthenticated && RedirectIfNotAuthenticated)
+        {
+            RedirectToLogin();
+        }
+    }
+
+    private void HandleAuthStateChanged(AuthStateChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+
+        // Redirect if user logs out
+        if (!e.AuthState.IsAuthenticated && RedirectIfNotAuthenticated)
+        {
+            RedirectToLogin();
+        }
+    }
+
+    private void RedirectToLogin()
+    {
+        var returnUrl = Uri.EscapeDataString(Navigation.Uri);
+        Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthStateChanged -= HandleAuthStateChanged;
+    }
+}

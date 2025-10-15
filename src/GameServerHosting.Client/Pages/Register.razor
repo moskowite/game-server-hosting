@@ -1,0 +1,212 @@
+@page "/register"
+@using GameServerHosting.Client.Models.Auth
+@using GameServerHosting.Client.Services
+@inject AuthenticationService AuthService
+@inject NavigationManager Navigation
+
+<div class="auth-container">
+    <div class="auth-card register-card">
+        <div class="auth-header">
+            <h1>Create Account</h1>
+            <p>Join us and start hosting your game servers</p>
+        </div>
+
+        @if (_registrationSuccess)
+        {
+            <div class="alert alert-success">
+                <span class="bi bi-check-circle-fill"></span>
+                <div>
+                    <strong>Registration successful!</strong>
+                    <p>Please check your email to verify your account before logging in.</p>
+                </div>
+            </div>
+            <div class="auth-footer">
+                <a href="/login" class="btn btn-primary btn-block">Go to Login</a>
+            </div>
+        }
+        else
+        {
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-error">
+                    <span class="bi bi-exclamation-triangle-fill"></span>
+                    @_errorMessage
+                </div>
+            }
+
+            <EditForm Model="@_registerModel" OnValidSubmit="HandleRegister" class="auth-form">
+                <DataAnnotationsValidator />
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="firstName">First Name</label>
+                        <InputText id="firstName" @bind-Value="_registerModel.FirstName" class="form-control" placeholder="John" />
+                        <ValidationMessage For="@(() => _registerModel.FirstName)" class="validation-message" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lastName">Last Name</label>
+                        <InputText id="lastName" @bind-Value="_registerModel.LastName" class="form-control" placeholder="Doe" />
+                        <ValidationMessage For="@(() => _registerModel.LastName)" class="validation-message" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <InputText id="email" @bind-Value="_registerModel.Email" class="form-control" placeholder="you@example.com" />
+                    <ValidationMessage For="@(() => _registerModel.Email)" class="validation-message" />
+                </div>
+
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <InputText id="username" @bind-Value="_registerModel.UserName" class="form-control" placeholder="Choose a username" />
+                    <ValidationMessage For="@(() => _registerModel.UserName)" class="validation-message" />
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <InputText id="password" type="password" @bind-Value="_registerModel.Password" class="form-control" placeholder="Create a strong password" />
+                    <ValidationMessage For="@(() => _registerModel.Password)" class="validation-message" />
+                    @if (!string.IsNullOrEmpty(_registerModel.Password))
+                    {
+                        <div class="password-strength">
+                            <div class="password-strength-bar">
+                                <div class="password-strength-fill" style="width: @(_passwordStrength)%; background-color: @(_passwordStrengthColor)"></div>
+                            </div>
+                            <span class="password-strength-text" style="color: @(_passwordStrengthColor)">@_passwordStrengthText</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <InputText id="confirmPassword" type="password" @bind-Value="_registerModel.ConfirmPassword" class="form-control" placeholder="Re-enter your password" />
+                    <ValidationMessage For="@(() => _registerModel.ConfirmPassword)" class="validation-message" />
+                </div>
+
+                <div class="form-check">
+                    <InputCheckbox id="acceptTerms" @bind-Value="_registerModel.AcceptTerms" class="form-check-input" />
+                    <label for="acceptTerms" class="form-check-label">
+                        I agree to the <a href="/terms" target="_blank" class="link-primary">Terms of Service</a> and <a href="/privacy" target="_blank" class="link-primary">Privacy Policy</a>
+                    </label>
+                    <ValidationMessage For="@(() => _registerModel.AcceptTerms)" class="validation-message" />
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" disabled="@_isLoading">
+                    @if (_isLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm"></span>
+                        <span>Creating Account...</span>
+                    }
+                    else
+                    {
+                        <span>Create Account</span>
+                    }
+                </button>
+            </EditForm>
+
+            <div class="auth-footer">
+                <p>Already have an account? <a href="/login" class="link-primary">Sign in</a></p>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private RegisterRequest _registerModel = new();
+    private string? _errorMessage;
+    private bool _isLoading = false;
+    private bool _registrationSuccess = false;
+    private int _passwordStrength = 0;
+    private string _passwordStrengthText = "";
+    private string _passwordStrengthColor = "#718096";
+
+    protected override void OnInitialized()
+    {
+        // If already authenticated, redirect to dashboard
+        if (AuthService.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/dashboard");
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        CalculatePasswordStrength();
+    }
+
+    private void CalculatePasswordStrength()
+    {
+        var password = _registerModel.Password;
+        if (string.IsNullOrEmpty(password))
+        {
+            _passwordStrength = 0;
+            _passwordStrengthText = "";
+            return;
+        }
+
+        int strength = 0;
+
+        // Length
+        if (password.Length >= 8) strength += 20;
+        if (password.Length >= 12) strength += 20;
+
+        // Contains lowercase
+        if (password.Any(char.IsLower)) strength += 15;
+
+        // Contains uppercase
+        if (password.Any(char.IsUpper)) strength += 15;
+
+        // Contains digit
+        if (password.Any(char.IsDigit)) strength += 15;
+
+        // Contains special character
+        if (password.Any(c => !char.IsLetterOrDigit(c))) strength += 15;
+
+        _passwordStrength = Math.Min(strength, 100);
+
+        if (_passwordStrength < 40)
+        {
+            _passwordStrengthText = "Weak";
+            _passwordStrengthColor = "#e53e3e";
+        }
+        else if (_passwordStrength < 70)
+        {
+            _passwordStrengthText = "Medium";
+            _passwordStrengthColor = "#dd6b20";
+        }
+        else
+        {
+            _passwordStrengthText = "Strong";
+            _passwordStrengthColor = "#38a169";
+        }
+    }
+
+    private async Task HandleRegister()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await AuthService.RegisterAsync(_registerModel);
+
+            if (result.Success)
+            {
+                _registrationSuccess = true;
+            }
+            else
+            {
+                _errorMessage = result.Message ?? "Registration failed. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"An unexpected error occurred: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}
