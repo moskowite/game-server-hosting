@@ -86,17 +86,18 @@ The ServerStatus enum was already in place with the following states:
 **Endpoints:**
 
 #### Server Management
-- `GET /api/gameservers` - Get all servers for current user
-- `GET /api/gameservers/{id}` - Get specific server details
-- `GET /api/gameservers/{id}/status` - Get provisioning status
-- `POST /api/gameservers/{id}/start` - Start a server
-- `POST /api/gameservers/{id}/stop` - Stop a server
-- `POST /api/gameservers/{id}/restart` - Restart a server
-- `DELETE /api/gameservers/{id}` - Delete a server
+- `GET /api/servers` - Get all servers for current user
+- `GET /api/servers/user/{userId}` - Get servers for specific user (requires admin or own user)
+- `GET /api/servers/{id}` - Get specific server details
+- `GET /api/servers/{id}/status` - Get provisioning status
+- `POST /api/servers/{id}/start` - Start a server
+- `POST /api/servers/{id}/stop` - Stop a server
+- `POST /api/servers/{id}/restart` - Restart a server
+- `DELETE /api/servers/{id}` - Delete a server
 
 #### Monitoring
-- `GET /api/gameservers/{id}/health` - Get health status
-- `GET /api/gameservers/{id}/metrics` - Get resource metrics
+- `GET /api/servers/{id}/health` - Get health status
+- `GET /api/servers/{id}/metrics` - Get resource metrics
 
 **Security:**
 - All endpoints require authentication (`[Authorize]`)
