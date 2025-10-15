@@ -2,39 +2,45 @@
 ### Base URL
 @baseUrl = https://localhost:7001
 @token = YOUR_JWT_TOKEN_HERE
+@userId = YOUR_USER_ID_HERE
+@serverId = YOUR_SERVER_ID_HERE
 
-### Get all servers for user
-GET {{baseUrl}}/api/gameservers
+### Get all servers for current user
+GET {{baseUrl}}/api/servers
+Authorization: Bearer {{token}}
+
+### Get all servers for a specific user (requires admin or own user)
+GET {{baseUrl}}/api/servers/user/{{userId}}
 Authorization: Bearer {{token}}
 
 ### Get specific server
-GET {{baseUrl}}/api/gameservers/{{serverId}}
+GET {{baseUrl}}/api/servers/{{serverId}}
 Authorization: Bearer {{token}}
 
 ### Get server provisioning status
-GET {{baseUrl}}/api/gameservers/{{serverId}}/status
+GET {{baseUrl}}/api/servers/{{serverId}}/status
 Authorization: Bearer {{token}}
 
 ### Start a server
-POST {{baseUrl}}/api/gameservers/{{serverId}}/start
+POST {{baseUrl}}/api/servers/{{serverId}}/start
 Authorization: Bearer {{token}}
 
 ### Stop a server
-POST {{baseUrl}}/api/gameservers/{{serverId}}/stop
+POST {{baseUrl}}/api/servers/{{serverId}}/stop
 Authorization: Bearer {{token}}
 
 ### Restart a server
-POST {{baseUrl}}/api/gameservers/{{serverId}}/restart
+POST {{baseUrl}}/api/servers/{{serverId}}/restart
 Authorization: Bearer {{token}}
 
 ### Delete a server
-DELETE {{baseUrl}}/api/gameservers/{{serverId}}
+DELETE {{baseUrl}}/api/servers/{{serverId}}
 Authorization: Bearer {{token}}
 
 ### Get server health status
-GET {{baseUrl}}/api/gameservers/{{serverId}}/health
+GET {{baseUrl}}/api/servers/{{serverId}}/health
 Authorization: Bearer {{token}}
 
 ### Get server metrics
-GET {{baseUrl}}/api/gameservers/{{serverId}}/metrics
+GET {{baseUrl}}/api/servers/{{serverId}}/metrics
 Authorization: Bearer {{token}}

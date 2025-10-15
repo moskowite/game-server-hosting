@@ -25,15 +25,16 @@
 ## API Endpoints
 
 ```
-GET    /api/gameservers              - List all user's servers
-GET    /api/gameservers/{id}         - Get server details
-GET    /api/gameservers/{id}/status  - Get provisioning status
-POST   /api/gameservers/{id}/start   - Start server
-POST   /api/gameservers/{id}/stop    - Stop server
-POST   /api/gameservers/{id}/restart - Restart server
-DELETE /api/gameservers/{id}         - Delete server
-GET    /api/gameservers/{id}/health  - Get health status
-GET    /api/gameservers/{id}/metrics - Get resource metrics
+GET    /api/servers                 - List all current user's servers
+GET    /api/servers/user/{userId}   - List servers for specific user (requires admin or own user)
+GET    /api/servers/{id}            - Get server details
+GET    /api/servers/{id}/status     - Get provisioning status
+POST   /api/servers/{id}/start      - Start server
+POST   /api/servers/{id}/stop       - Stop server
+POST   /api/servers/{id}/restart    - Restart server
+DELETE /api/servers/{id}            - Delete server
+GET    /api/servers/{id}/health     - Get health status
+GET    /api/servers/{id}/metrics    - Get resource metrics
 ```
 
 ## Key Features

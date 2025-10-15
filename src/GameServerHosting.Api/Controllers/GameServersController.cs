@@ -12,7 +12,7 @@ namespace GameServerHosting.Api.Controllers;
 /// API endpoints for managing game servers
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/servers")]
 [Authorize]
 public class GameServersController : ControllerBase
 {
@@ -40,6 +40,54 @@ public class GameServersController : ControllerBase
     public async Task<ActionResult<IEnumerable<GameServerDto>>> GetServers()
     {
         var userId = GetUserId();
+
+        var servers = await _context.GameServers
+            .Where(s => s.UserId == userId)
+            .Include(s => s.ServerType)
+            .OrderByDescending(s => s.CreatedAt)
+            .Select(s => new GameServerDto
+            {
+                Id = s.Id,
+                ServerName = s.ServerName,
+                IpAddress = s.IpAddress,
+                Port = s.Port,
+                Status = s.Status,
+                Version = s.Version,
+                DeployedAt = s.DeployedAt,
+                ExpiresAt = s.ExpiresAt,
+                LastHeartbeatAt = s.LastHeartbeatAt,
+                CreatedAt = s.CreatedAt,
+                ServerTypeName = s.ServerType.Name,
+                GameName = s.ServerType.GameName
+            })
+            .ToListAsync();
+
+        return Ok(servers);
+    }
+
+    /// <summary>
+    /// Gets all game servers for a specific user
+    /// </summary>
+    /// <param name="userId">The ID of the user whose servers to retrieve</param>
+    /// <returns>List of game servers for the specified user</returns>
+    [HttpGet("user/{userId}")]
+    public async Task<ActionResult<IEnumerable<GameServerDto>>> GetServersByUserId(Guid userId)
+    {
+        var currentUserId = GetUserId();
+
+        // Check if the current user is requesting their own servers or is an admin
+        if (currentUserId != userId)
+        {
+            // Check if user is an admin
+            var currentUser = await _context.Users.FindAsync(currentUserId);
+            if (currentUser == null || currentUser.Role != UserRole.Admin)
+            {
+                _logger.LogWarning(
+                    "User {CurrentUserId} attempted to access servers for user {TargetUserId} without admin privileges",
+                    currentUserId, userId);
+                return Forbid();
+            }
+        }
 
         var servers = await _context.GameServers
             .Where(s => s.UserId == userId)
