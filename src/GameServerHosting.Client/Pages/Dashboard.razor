@@ -5,7 +5,9 @@
 
 <PageTitle>Dashboard - Game Server Hosting</PageTitle>
 
-<div class="dashboard-container">
+<AuthorizeView>
+    <Authorized>
+        <div class="dashboard-container">
     @if (isLoading)
     {
         <div class="loading-spinner">
@@ -564,3 +566,5 @@
         return true;
     }
 }
+    </Authorized>
+</AuthorizeView>

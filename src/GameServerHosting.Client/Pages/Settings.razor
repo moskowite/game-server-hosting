@@ -4,7 +4,9 @@
 
 <PageTitle>Settings - Game Server Hosting</PageTitle>
 
-<div class="settings-container">
+<AuthorizeView>
+    <Authorized>
+        <div class="settings-container">
     @if (isLoading)
     {
         <div class="loading-spinner">
@@ -569,3 +571,5 @@
         }
     }
 }
+    </Authorized>
+</AuthorizeView>
