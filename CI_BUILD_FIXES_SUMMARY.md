@@ -127,6 +127,22 @@ The implementation maintains all intended functionality while being compatible w
 - **Compatibility**: Code now correctly uses Quartz.NET v3.13.1 APIs
 - **Code Quality**: Improved null-safety and removed deprecated code
 
+## Update: Second Round of Fixes Required
+
+After the initial fixes were applied, a second compilation error was discovered:
+
+### Round 2 Error
+**Location**: `PaymentService.cs:672`  
+**Error**: `The name 'isNew' does not exist in the current context`
+
+**Root Cause**: When fixing the null reference warning, I removed the `isNew` variable declaration but forgot to update a log statement 100+ lines later that still referenced it.
+
+**Resolution**: Re-introduced the `isNew` variable properly while maintaining null-safety. The variable serves a legitimate purpose for logging whether a payment record was created or updated.
+
+See `CI_BUILD_FIX_ROUND2.md` for complete details on the second fix.
+
+---
+
 ## Next Steps
 
-The code is now ready for CI validation. All errors and warnings have been addressed without compromising the background job processing functionality.
+The code is now ready for CI validation. All errors and warnings have been addressed across two rounds of fixes without compromising the background job processing functionality.

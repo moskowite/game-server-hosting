@@ -571,7 +571,9 @@ public class PaymentService : IPaymentService
             var payment = await _context.Payments
                 .FirstOrDefaultAsync(p => p.TransactionId == paymentIntent.Id);
 
-            if (payment == null)
+            var isNew = payment == null;
+
+            if (isNew)
             {
                 // Create new payment record
                 payment = new Payment
