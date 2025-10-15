@@ -1,15 +1,19 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
-MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{4ED02F95-FEA2-4F2C-AE07-BC85B37A3A6F}"
+MinimumVisualStudioVersion = 10.0.4021Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{4ED02F95-FEA2-4F2C-AE07-BC85B37A3A6F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameServerHosting.Api", "src\GameServerHosting.Api\GameServerHosting.Api.csproj", "{37537BAC-05A3-49B8-8344-83F2F01E69B1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameServerHosting.Client", "src\GameServerHosting.Client\GameServerHosting.Client.csproj", "{D05A0A5B-DB25-48F3-B415-A6B74474489A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameServerHosting.Shared", "src\GameServerHosting.Shared\GameServerHosting.Shared.csproj", "{6A95372D-B764-42DB-828F-4E4B2CF4005D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameServerHosting.Domain", "src\GameServerHosting.Domain\GameServerHosting.Domain.csproj", "{A1B2C3D4-E5F6-4A5B-9C8D-7E6F5A4B3C2D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameServerHosting.Application", "src\GameServerHosting.Application\GameServerHosting.Application.csproj", "{B2C3D4E5-F6A7-4B5C-9D8E-7F6A5B4C3D2E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameServerHosting.Infrastructure", "src\GameServerHosting.Infrastructure\GameServerHosting.Infrastructure.csproj", "{C3D4E5F6-A7B8-4C5D-9E8F-7A6B5C4D3E2F}"
+EndProject
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -18,8 +22,7 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+	EndG	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{37537BAC-05A3-49B8-8344-83F2F01E69B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{37537BAC-05A3-49B8-8344-83F2F01E69B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{37537BAC-05A3-49B8-8344-83F2F01E69B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -28,14 +31,25 @@ Global
 		{D05A0A5B-DB25-48F3-B415-A6B74474489A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D05A0A5B-DB25-48F3-B415-A6B74474489A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D05A0A5B-DB25-48F3-B415-A6B74474489A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6A95372D-B764-42DB-828F-4E4B2CF4005D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6A95372D-B764-42DB-828F-4E4B2CF4005D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6A95372D-B764-42DB-828F-4E4B2CF4005D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6A95372D-B764-42DB-828F-4E4B2CF4005D}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
+		{A1B2C3D4-E5F6-4A5B-9C8D-7E6F5A4B3C2D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-4A5B-9C8D-7E6F5A4B3C2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-4A5B-9C8D-7E6F5A4B3C2D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-4A5B-9C8D-7E6F5A4B3C2D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B2C3D4E5-F6A7-4B5C-9D8E-7F6A5B4C3D2E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B2C3D4E5-F6A7-4B5C-9D8E-7F6A5B4C3D2E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B2C3D4E5-F6A7-4B5C-9D8E-7F6A5B4C3D2E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B2C3D4E5-F6A7-4B5C-9D8E-7F6A5B4C3D2E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3D4E5F6-A7B8-4C5D-9E8F-7A6B5C4D3E2F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3D4E5F6-A7B8-4C5D-9E8F-7A6B5C4D3E2F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3D4E5F6-A7B8-4C5D-9E8F-7A6B5C4D3E2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3D4E5F6-A7B8-4C5D-9E8F-7A6B5C4D3E2F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection|Any CPU
+	End	GlobalSection(NestedProjects) = preSolution
 		{37537BAC-05A3-49B8-8344-83F2F01E69B1} = {4ED02F95-FEA2-4F2C-AE07-BC85B37A3A6F}
 		{D05A0A5B-DB25-48F3-B415-A6B74474489A} = {4ED02F95-FEA2-4F2C-AE07-BC85B37A3A6F}
-		{6A95372D-B764-42DB-828F-4E4B2CF4005D} = {4ED02F95-FEA2-4F2C-AE07-BC85B37A3A6F}
+		{A1B2C3D4-E5F6-4A5B-9C8D-7E6F5A4B3C2D} = {4ED02F95-FEA2-4F2C-AE07-BC85B37A3A6F}
+		{B2C3D4E5-F6A7-4B5C-9D8E-7F6A5B4C3D2E} = {4ED02F95-FEA2-4F2C-AE07-BC85B37A3A6F}
+		{C3D4E5F6-A7B8-4C5D-9E8F-7A6B5C4D3E2F} = {4ED02F95-FEA2-4F2C-AE07-BC85B37A3A6F}
+	EndGlobalSection
 	EndGlobalSection
 EndGlobal

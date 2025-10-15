@@ -1,7 +1,7 @@
-using GameServerHosting.Api.Data;
-using GameServerHosting.Api.Models;
-using GameServerHosting.Api.Services;
-using GameServerHosting.Shared.Enums;
+using GameServerHosting.Infrastructure.Data;
+using GameServerHosting.Application.DTOs;
+using GameServerHosting.Application.Interfaces;
+using GameServerHosting.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

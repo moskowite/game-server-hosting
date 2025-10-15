@@ -1,10 +1,10 @@
-using GameServerHosting.Api.Models;
-using GameServerHosting.Shared.Entities;
+using GameServerHosting.Application.DTOs;
+using GameServerHosting.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using GameServerHosting.Api.Data;
+using GameServerHosting.Infrastructure.Data;
 
 namespace GameServerHosting.Api.Controllers;
 
