@@ -1,0 +1,82 @@
+# Development overrides for docker-compose.yml
+# This file is automatically merged with docker-compose.yml when running `docker-compose up`
+# To use production configuration, run: docker-compose -f docker-compose.yml up
+
+version: '3.8'
+
+services:
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # Development-specific CORS settings
+      Cors__AllowAnyLocalhostOrigin: "true"
+      # Detailed logging for development
+      Serilog__MinimumLevel__Default: "Debug"
+      Serilog__MinimumLevel__Override__Microsoft: "Information"
+    volumes:
+      # Hot reload support - mount source code
+      - ./src/GameServerHosting.Api:/src/src/GameServerHosting.Api:ro
+      - ./src/GameServerHosting.Shared:/src/src/GameServerHosting.Shared:ro
+      # Persist logs locally for debugging
+      - ./logs/api:/app/logs
+    ports:
+      # Expose additional debug port
+      - "5292:8080"
+      - "5293:5293"  # Debug port
+    # Override build for development (if needed, can rebuild with --build flag)
+    build:
+      context: .
+      dockerfile: src/GameServerHosting.Api/Dockerfile
+      target: build  # Stop at build stage for debugging
+
+  client:
+    environment:
+      # Development API endpoint (connects to local API container)
+      ApiSettings__BaseUrl: "http://localhost:5292"
+    volumes:
+      # Hot reload support - mount source code
+      - ./src/GameServerHosting.Client/wwwroot:/usr/share/nginx/html:ro
+    ports:
+      - "5173:80"
+
+  postgres:
+    # Development: expose postgres for direct connections
+    ports:
+      - "5432:5432"
+    # Development: enable query logging
+    command: 
+      - "postgres"
+      - "-c"
+      - "log_statement=all"
+      - "-c"
+      - "log_duration=on"
+    volumes:
+      # Named volume for data persistence across restarts
+      - postgres_data:/var/lib/postgresql/data
+      # Optional: mount initialization scripts
+      # - ./database-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+  maildev:
+    # Already configured for development in main compose file
+    # Web UI accessible at http://localhost:1080
+    # SMTP server at localhost:1025
+    ports:
+      - "1080:1080"
+      - "1025:1025"
+
+  pgadmin:
+    # Development: expose pgAdmin for database management
+    ports:
+      - "5050:80"
+    environment:
+      # Development credentials (DO NOT use in production)
+      PGADMIN_DEFAULT_EMAIL: admin@gameserver.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+
+# Development-specific volumes
+volumes:
+  postgres_data:
+    driver: local
+    name: gameserver-postgres-data-dev
