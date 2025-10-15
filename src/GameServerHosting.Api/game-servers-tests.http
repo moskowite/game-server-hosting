@@ -1,0 +1,40 @@
+### Game Servers API Tests
+### Base URL
+@baseUrl = https://localhost:7001
+@token = YOUR_JWT_TOKEN_HERE
+
+### Get all servers for user
+GET {{baseUrl}}/api/gameservers
+Authorization: Bearer {{token}}
+
+### Get specific server
+GET {{baseUrl}}/api/gameservers/{{serverId}}
+Authorization: Bearer {{token}}
+
+### Get server provisioning status
+GET {{baseUrl}}/api/gameservers/{{serverId}}/status
+Authorization: Bearer {{token}}
+
+### Start a server
+POST {{baseUrl}}/api/gameservers/{{serverId}}/start
+Authorization: Bearer {{token}}
+
+### Stop a server
+POST {{baseUrl}}/api/gameservers/{{serverId}}/stop
+Authorization: Bearer {{token}}
+
+### Restart a server
+POST {{baseUrl}}/api/gameservers/{{serverId}}/restart
+Authorization: Bearer {{token}}
+
+### Delete a server
+DELETE {{baseUrl}}/api/gameservers/{{serverId}}
+Authorization: Bearer {{token}}
+
+### Get server health status
+GET {{baseUrl}}/api/gameservers/{{serverId}}/health
+Authorization: Bearer {{token}}
+
+### Get server metrics
+GET {{baseUrl}}/api/gameservers/{{serverId}}/metrics
+Authorization: Bearer {{token}}
