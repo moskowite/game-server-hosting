@@ -61,10 +61,8 @@ public class EmailService : IEmailService
         await SendEmailAsync(email, subject, htmlContent, plainTextContent);
     }
 
-    /// <summary>
-    /// Sends an email using the configured provider
-    /// </summary>
-    private async Task SendEmailAsync(string toEmail, string subject, string htmlContent, string plainTextContent)
+    /// <inheritdoc />
+    public async Task SendEmailAsync(string toEmail, string subject, string htmlContent, string? plainTextContent = null)
     {
         try
         {
@@ -89,19 +87,19 @@ public class EmailService : IEmailService
     /// <summary>
     /// Sends email via SendGrid
     /// </summary>
-    private async Task SendViaSendGridAsync(string toEmail, string subject, string htmlContent, string plainTextContent)
+    private async Task SendViaSendGridAsync(string toEmail, string subject, string htmlContent, string? plainTextContent)
     {
         if (string.IsNullOrEmpty(_emailSettings.SendGrid.ApiKey))
         {
             _logger.LogWarning("SendGrid API key is not configured. Email will be logged instead of sent.");
-            LogEmailContent(toEmail, subject, plainTextContent);
+            LogEmailContent(toEmail, subject, plainTextContent ?? string.Empty);
             return;
         }
 
         var client = new SendGridClient(_emailSettings.SendGrid.ApiKey);
         var from = new EmailAddress(_emailSettings.FromEmail, _emailSettings.FromName);
         var to = new EmailAddress(toEmail);
-        var msg = MailHelper.CreateSingleEmail(from, to, subject, plainTextContent, htmlContent);
+        var msg = MailHelper.CreateSingleEmail(from, to, subject, plainTextContent ?? string.Empty, htmlContent);
         
         var response = await client.SendEmailAsync(msg);
 
@@ -116,12 +114,12 @@ public class EmailService : IEmailService
     /// <summary>
     /// Sends email via SMTP
     /// </summary>
-    private async Task SendViaSmtpAsync(string toEmail, string subject, string htmlContent, string plainTextContent)
+    private async Task SendViaSmtpAsync(string toEmail, string subject, string htmlContent, string? plainTextContent)
     {
         if (string.IsNullOrEmpty(_emailSettings.Smtp.Host))
         {
             _logger.LogWarning("SMTP host is not configured. Email will be logged instead of sent.");
-            LogEmailContent(toEmail, subject, plainTextContent);
+            LogEmailContent(toEmail, subject, plainTextContent ?? string.Empty);
             return;
         }
 
@@ -132,7 +130,7 @@ public class EmailService : IEmailService
 
         var builder = new BodyBuilder
         {
-            TextBody = plainTextContent,
+            TextBody = plainTextContent ?? string.Empty,
             HtmlBody = htmlContent
         };
         message.Body = builder.ToMessageBody();
