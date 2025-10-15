@@ -216,23 +216,49 @@ try
     // Configure CORS
     var corsConfig = builder.Configuration.GetSection("Cors");
     var policyName = corsConfig.GetValue<string>("PolicyName") ?? "GameServerHostingPolicy";
+    var allowAnyLocalhostOrigin = corsConfig.GetValue<bool>("AllowAnyLocalhostOrigin");
     var allowedOrigins = corsConfig.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
     var allowedMethods = corsConfig.GetSection("AllowedMethods").Get<string[]>() ?? new[] { "GET", "POST", "PUT", "DELETE" };
     var allowedHeaders = corsConfig.GetSection("AllowedHeaders").Get<string[]>() ?? new[] { "*" };
     var allowCredentials = corsConfig.GetValue<bool>("AllowCredentials");
     var maxAge = corsConfig.GetValue<int?>("MaxAge");
 
+    // Production safety validation - prevent AllowAnyLocalhostOrigin in non-Development environments
+    if (!builder.Environment.IsDevelopment() && allowAnyLocalhostOrigin)
+    {
+        throw new InvalidOperationException(
+            "AllowAnyLocalhostOrigin cannot be enabled in Production or Staging environments. " +
+            "This setting is only allowed when ASPNETCORE_ENVIRONMENT=Development.");
+    }
+
     builder.Services.AddCors(options =>
     {
         options.AddPolicy(policyName, policy =>
         {
-            if (allowedOrigins.Length > 0)
+            // In Development, allow any localhost origin if configured
+            if (builder.Environment.IsDevelopment() && allowAnyLocalhostOrigin)
+            {
+                policy.SetIsOriginAllowed(origin =>
+                {
+                    if (string.IsNullOrWhiteSpace(origin))
+                        return false;
+
+                    var uri = new Uri(origin);
+                    // Allow any localhost or 127.0.0.1 origin on any port
+                    return uri.Host == "localhost" || uri.Host == "127.0.0.1" || uri.Host == "[::1]";
+                });
+                
+                Log.Information("CORS: Allowing all localhost origins for Development environment");
+            }
+            else if (allowedOrigins.Length > 0)
             {
                 policy.WithOrigins(allowedOrigins);
+                Log.Information("CORS: Allowing origins: {Origins}", string.Join(", ", allowedOrigins));
             }
             else
             {
                 policy.AllowAnyOrigin();
+                Log.Warning("CORS: Allowing ANY origin - this should only be used in development");
             }
 
             if (allowedMethods.Length > 0)
