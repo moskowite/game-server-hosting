@@ -6,6 +6,7 @@ using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Infrastructure.Jobs;
 using GameServerHosting.Infrastructure.Services;
 using GameServerHosting.Infrastructure.Consumers;
+using GameServerHosting.Infrastructure.Extensions;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -159,8 +160,10 @@ try
     // Register Invoice Service
     builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 
+    // Register Cloud & Payment Provider Services with Strategy Pattern
+    builder.Services.AddProviderServices(builder.Configuration);
+    
     // Register Server Provisioning Services
-    builder.Services.AddHttpClient<ICloudProviderService, DigitalOceanProviderService>();
     builder.Services.AddScoped<IServerProvisioningService, ServerProvisioningService>();
     
     // Register Server Management Services
