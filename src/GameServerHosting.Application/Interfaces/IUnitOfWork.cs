@@ -41,6 +41,11 @@ public interface IUnitOfWork : IDisposable
     ICartItemRepository CartItems { get; }
 
     /// <summary>
+    /// Repository for AsyncOperation entities
+    /// </summary>
+    IAsyncOperationRepository AsyncOperations { get; }
+
+    /// <summary>
     /// Saves all changes made in this unit of work
     /// </summary>
     /// <returns>Number of state entries written to the database</returns>

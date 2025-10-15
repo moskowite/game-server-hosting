@@ -42,11 +42,17 @@ services:
       Stripe__PublishableKey: "${STRIPE_PUBLISHABLE_KEY:-}"
       Stripe__WebhookSecret: "${STRIPE_WEBHOOK_SECRET:-}"
       CloudProviders__DigitalOcean__ApiToken: "${DIGITALOCEAN_API_TOKEN:-}"
+      RabbitMQ__Host: "rabbitmq"
+      RabbitMQ__VirtualHost: "gameserver"
+      RabbitMQ__Username: "gameserver"
+      RabbitMQ__Password: "gameserver_dev_password"
     depends_on:
       postgres:
         condition: service_healthy
       maildev:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
     networks:
       - gameserver-network
     healthcheck:
@@ -92,6 +98,29 @@ services:
       timeout: 3s
       retries: 3
 
+  # RabbitMQ - Message broker for background processing
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: gameserver-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: gameserver
+      RABBITMQ_DEFAULT_PASS: gameserver_dev_password
+      RABBITMQ_DEFAULT_VHOST: gameserver
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - gameserver-network
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
   # Optional: pgAdmin for database management (accessible at http://localhost:5050)
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -121,4 +150,7 @@ volumes:
   pgadmin_data:
     driver: local
     name: gameserver-pgadmin-data
+  rabbitmq_data:
+    driver: local
+    name: gameserver-rabbitmq-data
 

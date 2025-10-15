@@ -19,6 +19,7 @@ public class UnitOfWork : IUnitOfWork
     private IOrderRepository? _orders;
     private IPaymentRepository? _payments;
     private ICartItemRepository? _cartItems;
+    private IAsyncOperationRepository? _asyncOperations;
 
     public UnitOfWork(GameServerDbContext context)
     {
@@ -52,6 +53,10 @@ public class UnitOfWork : IUnitOfWork
     /// <inheritdoc/>
     public ICartItemRepository CartItems =>
         _cartItems ??= new CartItemRepository(_context);
+
+    /// <inheritdoc/>
+    public IAsyncOperationRepository AsyncOperations =>
+        _asyncOperations ??= new AsyncOperationRepository(_context);
 
     /// <inheritdoc/>
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

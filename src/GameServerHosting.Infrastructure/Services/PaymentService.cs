@@ -166,6 +166,43 @@ public class PaymentService : IPaymentService
     }
 
     /// <inheritdoc/>
+    public async Task<PaymentIntent> CapturePaymentAsync(string paymentIntentId)
+    {
+        try
+        {
+            var service = new PaymentIntentService();
+            
+            // Capture the payment intent
+            var paymentIntent = await service.CaptureAsync(paymentIntentId);
+
+            _logger.LogInformation(
+                "Captured payment intent {PaymentIntentId}, status: {Status}, amount: {Amount}",
+                paymentIntentId, paymentIntent.Status, paymentIntent.Amount);
+
+            // Update payment record in database
+            if (paymentIntent.Metadata.TryGetValue("user_id", out var userIdStr) 
+                && Guid.TryParse(userIdStr, out var userId))
+            {
+                Guid? orderId = null;
+                if (paymentIntent.Metadata.TryGetValue("order_id", out var orderIdStr) 
+                    && Guid.TryParse(orderIdStr, out var parsedOrderId))
+                {
+                    orderId = parsedOrderId;
+                }
+
+                await CreateOrUpdatePaymentRecordAsync(paymentIntent, orderId, userId);
+            }
+
+            return paymentIntent;
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogError(ex, "Stripe error capturing payment intent {PaymentIntentId}", paymentIntentId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<Refund> RefundPaymentAsync(string paymentIntentId, long? amount = null, string? reason = null)
     {
         try
