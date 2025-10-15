@@ -1,19 +1,62 @@
 @inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
+<div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar">
         <NavMenu />
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="app-main">
+        <!-- Top Bar -->
+        <header class="app-topbar">
+            <div class="topbar-content">
+                <div class="topbar-left">
+                    <button class="mobile-menu-toggle" @onclick="ToggleMobileMenu" aria-label="Toggle menu">
+                        <span class="bi bi-list"></span>
+                    </button>
+                    <h2 class="page-title">@GetPageTitle()</h2>
+                </div>
+                <div class="topbar-right">
+                    <button class="topbar-action" title="Notifications">
+                        <span class="bi bi-bell"></span>
+                        <span class="notification-badge">3</span>
+                    </button>
+                    <button class="topbar-action" title="User Profile">
+                        <span class="bi bi-person-circle"></span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="app-content">
+            <article class="content-wrapper">
+                @Body
+            </article>
+        </main>
     </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
 </div>
+
+<!-- Mobile Menu Overlay -->
+@if (showMobileMenu)
+{
+    <div class="mobile-menu-overlay" @onclick="ToggleMobileMenu"></div>
+}
 
 <CartNotificationToast />
 <CartSidebar />
+
+@code {
+    private bool showMobileMenu = false;
+
+    private void ToggleMobileMenu()
+    {
+        showMobileMenu = !showMobileMenu;
+    }
+
+    private string GetPageTitle()
+    {
+        // This is a simple implementation - you might want to use NavigationManager to get actual page title
+        return "Dashboard";
+    }
+}

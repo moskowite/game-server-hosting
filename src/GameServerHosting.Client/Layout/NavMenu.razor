@@ -1,72 +1,78 @@
 @inject CartService CartService
 @implements IDisposable
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">GameServerHosting.Client</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+<div class="nav-container">
+    <!-- Brand Header -->
+    <div class="nav-brand">
+        <a href="/" class="brand-link">
+            <div class="brand-icon">
+                <span class="bi bi-stars"></span>
+            </div>
+            <div class="brand-text">
+                <h1 class="brand-title">ServerHost</h1>
+                <p class="brand-subtitle">Pro Gaming</p>
+            </div>
+        </a>
     </div>
-</div>
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
+    <!-- Navigation Menu -->
+    <nav class="nav-menu">
+        <div class="nav-section">
+            <span class="nav-section-title">Main</span>
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <span class="nav-icon bi bi-house-door"></span>
+                <span class="nav-text">Home</span>
             </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="servers">
-                <span class="bi bi-server" aria-hidden="true"></span> Server Catalog
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
             <NavLink class="nav-link" href="dashboard">
-                <span class="bi bi-speedometer2" aria-hidden="true"></span> Dashboard
+                <span class="nav-icon bi bi-speedometer2"></span>
+                <span class="nav-text">Dashboard</span>
+            </NavLink>
+            <NavLink class="nav-link" href="servers">
+                <span class="nav-icon bi bi-hdd-rack"></span>
+                <span class="nav-text">Server Catalog</span>
             </NavLink>
         </div>
-        <div class="nav-item px-3">
+
+        <div class="nav-section">
+            <span class="nav-section-title">Management</span>
             <NavLink class="nav-link" href="plans/compare">
-                <span class="bi bi-layout-split" aria-hidden="true"></span> Compare Plans
+                <span class="nav-icon bi bi-layers"></span>
+                <span class="nav-text">Compare Plans</span>
             </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link position-relative" href="cart">
-                <span class="bi bi-cart3" aria-hidden="true"></span> Shopping Cart
+            <NavLink class="nav-link nav-link-cart" href="cart">
+                <span class="nav-icon bi bi-cart3"></span>
+                <span class="nav-text">Shopping Cart</span>
                 @if (CartService.ItemCount > 0)
                 {
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                        @CartService.ItemCount
-                        <span class="visually-hidden">items in cart</span>
-                    </span>
+                    <span class="cart-badge">@CartService.ItemCount</span>
                 }
             </NavLink>
         </div>
-        <div class="nav-item px-3">
+
+        <div class="nav-section">
+            <span class="nav-section-title">Account</span>
             <NavLink class="nav-link" href="settings">
-                <span class="bi bi-gear-fill" aria-hidden="true"></span> Settings
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
+                <span class="nav-icon bi bi-gear"></span>
+                <span class="nav-text">Settings</span>
             </NavLink>
         </div>
     </nav>
+
+    <!-- Bottom Section -->
+    <div class="nav-footer">
+        <div class="status-card">
+            <div class="status-indicator">
+                <span class="status-dot"></span>
+                <span class="status-text">All Systems Operational</span>
+            </div>
+            <a href="https://status.example.com" class="status-link" target="_blank">
+                <span class="bi bi-arrow-up-right"></span>
+            </a>
+        </div>
+    </div>
 </div>
 
 @code {
-    private bool collapseNavMenu = true;
-
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
     protected override async Task OnInitializedAsync()
     {
         await CartService.InitializeAsync();
@@ -76,11 +82,6 @@
     private void OnCartUpdated(CartNotification notification)
     {
         StateHasChanged();
-    }
-
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
     }
 
     public void Dispose()

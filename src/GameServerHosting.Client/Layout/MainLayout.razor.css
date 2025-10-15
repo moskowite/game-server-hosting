@@ -1,77 +1,250 @@
-.page {
-    position: relative;
+/* ============================================
+   MAIN LAYOUT - MODERN DESIGN
+   ============================================ */
+
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--bg-primary);
+}
+
+/* ============================================
+   SIDEBAR NAVIGATION
+   ============================================ */
+.app-sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+    border-right: 1px solid var(--border-secondary);
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: var(--z-fixed);
+    transition: transform var(--transition-base);
+}
+
+.app-sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.app-sidebar::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+
+.app-sidebar::-webkit-scrollbar-thumb {
+    background: var(--border-primary);
+    border-radius: var(--radius-full);
+}
+
+.app-sidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--color-primary-600);
+}
+
+/* ============================================
+   MAIN CONTENT AREA
+   ============================================ */
+.app-main {
+    flex: 1;
     display: flex;
     flex-direction: column;
+    margin-left: var(--sidebar-width);
+    min-height: 100vh;
+    transition: margin-left var(--transition-base);
 }
 
-main {
-    flex: 1;
+/* ============================================
+   TOP BAR
+   ============================================ */
+.app-topbar {
+    height: var(--topbar-height);
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-secondary);
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+    backdrop-filter: blur(10px);
+    background-color: rgba(17, 24, 39, 0.95);
 }
 
-.sidebar {
-    background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
-}
-
-.top-row {
-    background-color: #f7f7f7;
-    border-bottom: 1px solid #d6d5d5;
-    justify-content: flex-end;
-    height: 3.5rem;
+.topbar-content {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    padding: 0 var(--spacing-6);
 }
 
-    .top-row ::deep a, .top-row ::deep .btn-link {
-        white-space: nowrap;
-        margin-left: 1.5rem;
-        text-decoration: none;
+.topbar-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-4);
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+}
+
+.page-title {
+    margin: 0;
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    display: none;
+}
+
+.mobile-menu-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background-color: transparent;
+    color: var(--text-primary);
+    font-size: var(--font-size-2xl);
+    cursor: pointer;
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-fast);
+}
+
+.mobile-menu-toggle:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.topbar-action {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background-color: transparent;
+    color: var(--text-secondary);
+    font-size: var(--font-size-xl);
+    cursor: pointer;
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-fast);
+}
+
+.topbar-action:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.notification-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    font-size: 10px;
+    font-weight: var(--font-weight-bold);
+    background-color: var(--color-error);
+    color: white;
+    border-radius: var(--radius-full);
+    border: 2px solid var(--bg-secondary);
+}
+
+/* ============================================
+   CONTENT AREA
+   ============================================ */
+.app-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.content-wrapper {
+    padding: var(--spacing-8);
+    max-width: var(--max-width-2xl);
+    margin: 0 auto;
+    animation: fadeIn var(--transition-base) ease-out;
+}
+
+/* ============================================
+   MOBILE MENU
+   ============================================ */
+.mobile-menu-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background-color: var(--bg-overlay);
+    z-index: calc(var(--z-fixed) - 1);
+    animation: fadeIn var(--transition-fast) ease-out;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+@media (max-width: 1024px) {
+    .app-sidebar {
+        transform: translateX(-100%);
     }
 
-    .top-row ::deep a:hover, .top-row ::deep .btn-link:hover {
-        text-decoration: underline;
-    }
-
-    .top-row ::deep a:first-child {
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-@media (max-width: 640.98px) {
-    .top-row {
-        justify-content: space-between;
-    }
-
-    .top-row ::deep a, .top-row ::deep .btn-link {
+    .app-main {
         margin-left: 0;
     }
+
+    .mobile-menu-toggle {
+        display: flex;
+    }
+
+    .page-title {
+        display: block;
+    }
+
+    /* Show sidebar when mobile menu is active */
+    .app-layout:has(.mobile-menu-overlay) .app-sidebar {
+        transform: translateX(0);
+    }
+
+    .mobile-menu-overlay {
+        display: block;
+    }
+
+    .content-wrapper {
+        padding: var(--spacing-6);
+    }
 }
 
-@media (min-width: 641px) {
-    .page {
-        flex-direction: row;
+@media (max-width: 640px) {
+    .topbar-content {
+        padding: 0 var(--spacing-4);
     }
 
-    .sidebar {
-        width: 250px;
-        height: 100vh;
-        position: sticky;
-        top: 0;
+    .page-title {
+        font-size: var(--font-size-lg);
     }
 
-    .top-row {
-        position: sticky;
-        top: 0;
-        z-index: 1;
+    .content-wrapper {
+        padding: var(--spacing-4);
     }
 
-    .top-row.auth ::deep a:first-child {
-        flex: 1;
-        text-align: right;
-        width: 0;
+    .app-sidebar {
+        width: 100%;
+        max-width: 280px;
     }
+}
 
-    .top-row, article {
-        padding-left: 2rem !important;
-        padding-right: 1.5rem !important;
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
