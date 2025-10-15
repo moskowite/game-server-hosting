@@ -1,9 +1,10 @@
 using System.Text;
-using GameServerHosting.Api.Data;
-using GameServerHosting.Api.Jobs;
-using GameServerHosting.Api.Models;
-using GameServerHosting.Api.Services;
-using GameServerHosting.Shared.Entities;
+using GameServerHosting.Application.DTOs;
+using GameServerHosting.Application.Interfaces;
+using GameServerHosting.Domain.Entities;
+using GameServerHosting.Infrastructure.Data;
+using GameServerHosting.Infrastructure.Jobs;
+using GameServerHosting.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

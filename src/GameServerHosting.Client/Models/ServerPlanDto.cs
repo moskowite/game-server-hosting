@@ -1,4 +1,4 @@
-using GameServerHosting.Shared.Enums;
+using GameServerHosting.Domain.Enums;
 
 namespace GameServerHosting.Client.Models;
 
