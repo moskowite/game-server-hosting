@@ -55,14 +55,31 @@ Shared class library containing common models, DTOs, and contracts used by both 
 
 ## 🚀 Quick Start
 
+### Option 1: Full Docker Setup (Recommended)
+
+One command to start the entire application stack:
+
 ```bash
-# 1. Start PostgreSQL
-docker-compose up -d postgres
+# Start all services (API, Client, Database, MailDev)
+docker compose up -d
 
-# 2. Apply migrations
-dotnet ef database update --project src/GameServerHosting.Api
+# View logs
+docker compose logs -f
+```
 
-# 3. Run the application (in VS Code/Cursor)
+**Access the application:**
+- 🌐 **Client UI**: http://localhost:5173
+- 🔧 **API/Swagger**: http://localhost:5292/swagger
+- 📧 **MailDev** (Email Testing): http://localhost:1080
+- 🗄️ **pgAdmin**: http://localhost:5050
+
+### Option 2: Local Development
+
+```bash
+# 1. Start services (Database + MailDev)
+docker compose up -d postgres maildev
+
+# 2. Run the application (in VS Code/Cursor)
 Press F5 → Select "Full Stack (API + Client)"
 
 # Or run from command line:
@@ -70,12 +87,7 @@ dotnet run --project src/GameServerHosting.Api      # Terminal 1
 dotnet run --project src/GameServerHosting.Client   # Terminal 2
 ```
 
-**Access the application:**
-- 🔧 API/Swagger: http://localhost:5292/swagger
-- 🌐 Client UI: http://localhost:5106
-- 🗄️ pgAdmin: http://localhost:5050 (optional)
-
-📖 **Need more details?** See the [Quick Start Guide](docs/setup/quick-start.md)
+📖 **Need more details?** See the [Quick Start Guide](docs/setup/quick-start.md) or [Docker Setup Guide](docs/setup/docker-setup.md)
 
 ## 🛠️ Tech Stack
 
@@ -85,13 +97,21 @@ dotnet run --project src/GameServerHosting.Client   # Terminal 2
 | **Frontend** | Blazor WebAssembly |
 | **Database** | PostgreSQL 16 |
 | **Authentication** | ASP.NET Identity, JWT |
-| **Email** | SMTP with MailKit |
+| **Email** | SMTP with MailKit, MailDev (dev) |
+| **Containerization** | Docker, Docker Compose |
 | **Deployment** | Docker, GitHub Actions |
 
 ## 📋 Common Commands
 
 ```bash
-# Development
+# Docker (Recommended)
+docker compose up -d              # Start all services
+docker compose up -d --build      # Rebuild and start
+docker compose down               # Stop all services
+docker compose logs -f            # View logs
+docker compose ps                 # Check running containers
+
+# Development (Local)
 dotnet build                                        # Build solution
 dotnet test                                         # Run tests
 dotnet watch run --project src/GameServerHosting.Api  # Hot reload
@@ -99,11 +119,6 @@ dotnet watch run --project src/GameServerHosting.Api  # Hot reload
 # Database
 dotnet ef migrations add <Name> --project src/GameServerHosting.Api
 dotnet ef database update --project src/GameServerHosting.Api
-
-# Docker
-docker-compose up -d              # Start all services
-docker-compose down               # Stop all services  
-docker ps                         # Check running containers
 
 # CI/CD
 gh workflow run ci.yml            # Trigger CI

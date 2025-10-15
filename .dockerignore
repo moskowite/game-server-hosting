@@ -1,0 +1,83 @@
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+**/publish/
+
+# Node modules
+**/node_modules/
+
+# IDE and editor directories
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation files
+*.md
+!README.md
+docs/
+**/*.md
+BUILD_*.md
+CI_*.md
+*_SUMMARY.md
+*_IMPLEMENTATION.md
+
+# Test files
+**/*.http
+**/TestResults/
+**/*Tests/
+**/*.Tests/
+
+# Logs
+**/logs/
+*.log
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.sql
+
+# Docker files (no need to copy into image)
+**/Dockerfile*
+**/docker-compose*
+.dockerignore
+
+# OS files
+.DS_Store
+Thumbs.db
+*~
+
+# Package manager files
+**/packages/
+*.nuget.props
+*.nuget.targets
+
+# Temporary files
+**/tmp/
+**/temp/
+*.tmp
+*.bak
+*.swp
+*~
+
+# Environment and secrets
+.env
+.env.*
+*.pfx
+*.p12
+
+# Azure and CI/CD
+.azure/
+.github/
+azure-pipelines.yml
