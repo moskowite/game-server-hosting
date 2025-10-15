@@ -1,5 +1,7 @@
 @page "/dashboard"
 @inject DashboardService DashboardService
+@inject ServerManagementService ServerManagementService
+@inject NavigationManager NavigationManager
 
 <PageTitle>Dashboard - Game Server Hosting</PageTitle>
 
@@ -86,78 +88,182 @@
         <!-- Active Servers Section -->
         <div class="section-container">
             <div class="section-header">
-                <h2><i class="bi bi-server"></i> Active Servers</h2>
-                <button class="btn btn-primary btn-sm">
+                <h2><i class="bi bi-server"></i> Your Game Servers</h2>
+                <button class="btn btn-primary btn-sm" @onclick="NavigateToServerCatalog">
                     <i class="bi bi-plus-circle"></i> New Server
                 </button>
             </div>
             
             @if (dashboardData.ActiveServers.Any())
             {
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Server Name</th>
-                                <th>Game</th>
-                                <th>Status</th>
-                                <th>IP Address</th>
-                                <th>Resources</th>
-                                <th>Expires</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var server in dashboardData.ActiveServers)
-                            {
-                                <tr>
-                                    <td>
-                                        <strong>@server.ServerName</strong>
-                                        <br />
-                                        <small class="text-muted">@server.ServerTypeName</small>
-                                    </td>
-                                    <td>@server.GameName</td>
-                                    <td>
-                                        <span class="badge bg-@GetStatusColor(server.Status)">
-                                            @server.Status
+                <div class="servers-grid">
+                    @foreach (var server in dashboardData.ActiveServers)
+                    {
+                        var metrics = serverMetrics.GetValueOrDefault(server.Id);
+                        var isLoadingAction = loadingActions.Contains(server.Id);
+                        
+                        <div class="server-card">
+                            <!-- Server Header -->
+                            <div class="server-card-header">
+                                <div class="server-title-section">
+                                    <div class="server-icon">
+                                        <i class="bi @GetGameIcon(server.GameName)"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="server-name">@server.ServerName</h4>
+                                        <p class="server-type">@server.ServerTypeName</p>
+                                    </div>
+                                </div>
+                                <div class="server-status-badge">
+                                    <span class="status-indicator status-@GetStatusClass(server.Status)"></span>
+                                    <span class="status-text">@server.Status</span>
+                                </div>
+                            </div>
+
+                            <!-- Server Info -->
+                            <div class="server-info">
+                                <div class="info-item">
+                                    <i class="bi bi-controller"></i>
+                                    <span>@server.GameName</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(server.IpAddress))
+                                {
+                                    <div class="info-item">
+                                        <i class="bi bi-hdd-network"></i>
+                                        <code>@server.IpAddress:@server.Port</code>
+                                    </div>
+                                }
+                                <div class="info-item">
+                                    <i class="bi bi-people"></i>
+                                    <span>Max @server.MaxPlayers Players</span>
+                                </div>
+                                @if (server.ExpiresAt.HasValue)
+                                {
+                                    var daysUntilExpiry = (server.ExpiresAt.Value - DateTime.UtcNow).Days;
+                                    <div class="info-item">
+                                        <i class="bi bi-calendar-event"></i>
+                                        <span class="@(daysUntilExpiry < 7 ? "text-danger" : "")">
+                                            Expires @server.ExpiresAt.Value.ToString("MMM dd, yyyy")
                                         </span>
-                                    </td>
-                                    <td>
-                                        @if (!string.IsNullOrEmpty(server.IpAddress))
-                                        {
-                                            <code>@server.IpAddress:@server.Port</code>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">Pending</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        <small>
-                                            @server.CpuCores CPU | @server.RamMb MB RAM | @server.MaxPlayers Players
-                                        </small>
-                                    </td>
-                                    <td>
-                                        @if (server.ExpiresAt.HasValue)
-                                        {
-                                            <span class="@(server.ExpiresAt.Value < DateTime.UtcNow.AddDays(7) ? "text-danger" : "")">
-                                                @server.ExpiresAt.Value.ToString("MMM dd, yyyy")
-                                            </span>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">-</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary" title="Manage">
-                                            <i class="bi bi-gear"></i>
-                                        </button>
-                                    </td>
-                                </tr>
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Resource Usage -->
+                            @if (metrics != null)
+                            {
+                                <div class="resource-usage">
+                                    <h5 class="resource-title">Resource Usage</h5>
+                                    
+                                    <div class="resource-item">
+                                        <div class="resource-label">
+                                            <i class="bi bi-cpu"></i>
+                                            <span>CPU</span>
+                                        </div>
+                                        <div class="resource-bar-container">
+                                            <div class="resource-bar">
+                                                <div class="resource-fill resource-fill-@GetUsageLevel(metrics.CpuUsagePercent)" 
+                                                     style="width: @metrics.CpuUsagePercent%"></div>
+                                            </div>
+                                            <span class="resource-value">@metrics.CpuUsagePercent.ToString("F1")%</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="resource-item">
+                                        <div class="resource-label">
+                                            <i class="bi bi-memory"></i>
+                                            <span>Memory</span>
+                                        </div>
+                                        <div class="resource-bar-container">
+                                            <div class="resource-bar">
+                                                <div class="resource-fill resource-fill-@GetUsageLevel(metrics.MemoryUsagePercent)" 
+                                                     style="width: @metrics.MemoryUsagePercent%"></div>
+                                            </div>
+                                            <span class="resource-value">@metrics.MemoryUsagePercent.ToString("F1")%</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="resource-item">
+                                        <div class="resource-label">
+                                            <i class="bi bi-hdd"></i>
+                                            <span>Disk</span>
+                                        </div>
+                                        <div class="resource-bar-container">
+                                            <div class="resource-bar">
+                                                <div class="resource-fill resource-fill-@GetUsageLevel(metrics.DiskUsagePercent)" 
+                                                     style="width: @metrics.DiskUsagePercent%"></div>
+                                            </div>
+                                            <span class="resource-value">@metrics.DiskUsagePercent.ToString("F1")%</span>
+                                        </div>
+                                    </div>
+                                </div>
                             }
-                        </tbody>
-                    </table>
+                            else if (server.Status == ServerStatus.Running)
+                            {
+                                <div class="resource-loading">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading metrics...</span>
+                                    </div>
+                                    <span>Loading resource usage...</span>
+                                </div>
+                            }
+
+                            <!-- Quick Actions -->
+                            <div class="server-actions">
+                                @if (isLoadingAction)
+                                {
+                                    <div class="action-loading">
+                                        <div class="spinner-border spinner-border-sm" role="status"></div>
+                                        <span>Processing...</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    @if (server.Status == ServerStatus.Running)
+                                    {
+                                        <button class="btn btn-action btn-warning" 
+                                                @onclick="() => StopServer(server.Id)"
+                                                title="Stop Server">
+                                            <i class="bi bi-stop-circle"></i>
+                                            <span>Stop</span>
+                                        </button>
+                                        <button class="btn btn-action btn-info" 
+                                                @onclick="() => RestartServer(server.Id)"
+                                                title="Restart Server">
+                                            <i class="bi bi-arrow-clockwise"></i>
+                                            <span>Restart</span>
+                                        </button>
+                                    }
+                                    else if (server.Status == ServerStatus.Stopped || server.Status == ServerStatus.Suspended)
+                                    {
+                                        <button class="btn btn-action btn-success" 
+                                                @onclick="() => StartServer(server.Id)"
+                                                title="Start Server">
+                                            <i class="bi bi-play-circle"></i>
+                                            <span>Start</span>
+                                        </button>
+                                    }
+                                    
+                                    <button class="btn btn-action btn-primary" 
+                                            @onclick="() => ManageServer(server.Id)"
+                                            title="Manage Server">
+                                        <i class="bi bi-gear"></i>
+                                        <span>Manage</span>
+                                    </button>
+                                    
+                                    @if (server.Status != ServerStatus.Pending)
+                                    {
+                                        <button class="btn btn-action btn-danger" 
+                                                @onclick="() => DeleteServer(server.Id)"
+                                                title="Delete Server">
+                                            <i class="bi bi-trash"></i>
+                                            <span>Delete</span>
+                                        </button>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    }
                 </div>
             }
             else
@@ -166,8 +272,8 @@
                     <i class="bi bi-inbox"></i>
                     <h3>No Active Servers</h3>
                     <p>You don't have any servers yet. Create your first server to get started!</p>
-                    <button class="btn btn-primary">
-                        <i class="bi bi-plus-circle"></i> Create Server
+                    <button class="btn btn-primary" @onclick="NavigateToServerCatalog">
+                        <i class="bi bi-plus-circle"></i> Browse Server Catalog
                     </button>
                 </div>
             }
@@ -176,7 +282,7 @@
         <!-- Order History Section -->
         <div class="section-container">
             <div class="section-header">
-                <h2><i class="bi bi-clock-history"></i> Order History</h2>
+                <h2><i class="bi bi-clock-history"></i> Recent Orders</h2>
                 <a href="/orders" class="btn btn-outline-primary btn-sm">View All</a>
             </div>
             
@@ -253,6 +359,8 @@
 
 @code {
     private DashboardDto? dashboardData;
+    private Dictionary<Guid, ServerMetrics> serverMetrics = new();
+    private HashSet<Guid> loadingActions = new();
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -265,6 +373,25 @@
         isLoading = true;
         dashboardData = await DashboardService.GetDashboardDataAsync();
         isLoading = false;
+
+        // Load metrics for running servers
+        if (dashboardData?.ActiveServers != null)
+        {
+            foreach (var server in dashboardData.ActiveServers.Where(s => s.Status == ServerStatus.Running))
+            {
+                _ = LoadServerMetrics(server.Id);
+            }
+        }
+    }
+
+    private async Task LoadServerMetrics(Guid serverId)
+    {
+        var metrics = await ServerManagementService.GetServerMetricsAsync(serverId);
+        if (metrics != null)
+        {
+            serverMetrics[serverId] = metrics;
+            StateHasChanged();
+        }
     }
 
     private string GetInitials(string firstName, string lastName)
@@ -275,6 +402,19 @@
         if (!string.IsNullOrEmpty(lastName))
             initials += lastName[0];
         return initials.ToUpper();
+    }
+
+    private string GetStatusClass(ServerStatus status)
+    {
+        return status switch
+        {
+            ServerStatus.Running => "running",
+            ServerStatus.Stopped => "stopped",
+            ServerStatus.Pending => "pending",
+            ServerStatus.Suspended => "suspended",
+            ServerStatus.Terminated => "terminated",
+            _ => "unknown"
+        };
     }
 
     private string GetStatusColor(ServerStatus status)
@@ -300,5 +440,127 @@
             OrderStatus.Refunded => "info",
             _ => "secondary"
         };
+    }
+
+    private string GetGameIcon(string gameName)
+    {
+        return gameName.ToLower() switch
+        {
+            var name when name.Contains("minecraft") => "bi-box",
+            var name when name.Contains("counter-strike") || name.Contains("cs:go") => "bi-bullseye",
+            var name when name.Contains("rust") => "bi-hammer",
+            var name when name.Contains("ark") => "bi-egg",
+            var name when name.Contains("valheim") => "bi-tree",
+            var name when name.Contains("terraria") => "bi-dirt",
+            _ => "bi-controller"
+        };
+    }
+
+    private string GetUsageLevel(double percentage)
+    {
+        if (percentage < 50)
+            return "low";
+        else if (percentage < 80)
+            return "medium";
+        else
+            return "high";
+    }
+
+    private void NavigateToServerCatalog()
+    {
+        NavigationManager.NavigateTo("/servers");
+    }
+
+    private void ManageServer(Guid serverId)
+    {
+        // Navigate to server management page (to be implemented)
+        NavigationManager.NavigateTo($"/servers/manage/{serverId}");
+    }
+
+    private async Task StartServer(Guid serverId)
+    {
+        loadingActions.Add(serverId);
+        StateHasChanged();
+
+        var success = await ServerManagementService.StartServerAsync(serverId);
+        
+        loadingActions.Remove(serverId);
+        
+        if (success)
+        {
+            await LoadDashboardData();
+        }
+        else
+        {
+            // Show error message (you might want to add a toast notification system)
+            Console.WriteLine("Failed to start server");
+        }
+    }
+
+    private async Task StopServer(Guid serverId)
+    {
+        loadingActions.Add(serverId);
+        StateHasChanged();
+
+        var success = await ServerManagementService.StopServerAsync(serverId);
+        
+        loadingActions.Remove(serverId);
+        
+        if (success)
+        {
+            await LoadDashboardData();
+        }
+        else
+        {
+            Console.WriteLine("Failed to stop server");
+        }
+    }
+
+    private async Task RestartServer(Guid serverId)
+    {
+        loadingActions.Add(serverId);
+        StateHasChanged();
+
+        var success = await ServerManagementService.RestartServerAsync(serverId);
+        
+        loadingActions.Remove(serverId);
+        
+        if (success)
+        {
+            await LoadDashboardData();
+        }
+        else
+        {
+            Console.WriteLine("Failed to restart server");
+        }
+    }
+
+    private async Task DeleteServer(Guid serverId)
+    {
+        // Add confirmation dialog in production
+        if (!await ConfirmDelete())
+            return;
+
+        loadingActions.Add(serverId);
+        StateHasChanged();
+
+        var success = await ServerManagementService.DeleteServerAsync(serverId);
+        
+        loadingActions.Remove(serverId);
+        
+        if (success)
+        {
+            await LoadDashboardData();
+        }
+        else
+        {
+            Console.WriteLine("Failed to delete server");
+        }
+    }
+
+    private async Task<bool> ConfirmDelete()
+    {
+        // Simple confirmation for now - in production, use a modal dialog
+        return true;
     }
 }

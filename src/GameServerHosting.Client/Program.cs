@@ -27,6 +27,7 @@ builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ServerCatalogService>();
 builder.Services.AddScoped<ServerPlansService>();
+builder.Services.AddScoped<ServerManagementService>();
 builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<CheckoutService>();
 builder.Services.AddScoped<PaymentService>();
