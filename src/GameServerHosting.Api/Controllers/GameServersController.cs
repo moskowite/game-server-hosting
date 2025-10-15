@@ -1,10 +1,8 @@
-using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Application.DTOs;
 using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace GameServerHosting.Api.Controllers;
 
@@ -16,18 +14,18 @@ namespace GameServerHosting.Api.Controllers;
 [Authorize]
 public class GameServersController : ControllerBase
 {
-    private readonly GameServerDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IServerManagementService _serverManagement;
     private readonly IServerProvisioningService _provisioningService;
     private readonly ILogger<GameServersController> _logger;
 
     public GameServersController(
-        GameServerDbContext context,
+        IUnitOfWork unitOfWork,
         IServerManagementService serverManagement,
         IServerProvisioningService provisioningService,
         ILogger<GameServersController> logger)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _serverManagement = serverManagement;
         _provisioningService = provisioningService;
         _logger = logger;
@@ -41,28 +39,25 @@ public class GameServersController : ControllerBase
     {
         var userId = GetUserId();
 
-        var servers = await _context.GameServers
-            .Where(s => s.UserId == userId)
-            .Include(s => s.ServerType)
-            .OrderByDescending(s => s.CreatedAt)
-            .Select(s => new GameServerDto
-            {
-                Id = s.Id,
-                ServerName = s.ServerName,
-                IpAddress = s.IpAddress,
-                Port = s.Port,
-                Status = s.Status,
-                Version = s.Version,
-                DeployedAt = s.DeployedAt,
-                ExpiresAt = s.ExpiresAt,
-                LastHeartbeatAt = s.LastHeartbeatAt,
-                CreatedAt = s.CreatedAt,
-                ServerTypeName = s.ServerType.Name,
-                GameName = s.ServerType.GameName
-            })
-            .ToListAsync();
+        var servers = await _unitOfWork.GameServers.GetByUserIdAsync(userId);
 
-        return Ok(servers);
+        var serverDtos = servers.Select(s => new GameServerDto
+        {
+            Id = s.Id,
+            ServerName = s.ServerName,
+            IpAddress = s.IpAddress,
+            Port = s.Port,
+            Status = s.Status,
+            Version = s.Version,
+            DeployedAt = s.DeployedAt,
+            ExpiresAt = s.ExpiresAt,
+            LastHeartbeatAt = s.LastHeartbeatAt,
+            CreatedAt = s.CreatedAt,
+            ServerTypeName = s.ServerType.Name,
+            GameName = s.ServerType.GameName
+        }).ToList();
+
+        return Ok(serverDtos);
     }
 
     /// <summary>
@@ -79,7 +74,7 @@ public class GameServersController : ControllerBase
         if (currentUserId != userId)
         {
             // Check if user is an admin
-            var currentUser = await _context.Users.FindAsync(currentUserId);
+            var currentUser = await _unitOfWork.Users.GetByIdAsync(currentUserId);
             if (currentUser == null || currentUser.Role != UserRole.Admin)
             {
                 _logger.LogWarning(
@@ -89,28 +84,25 @@ public class GameServersController : ControllerBase
             }
         }
 
-        var servers = await _context.GameServers
-            .Where(s => s.UserId == userId)
-            .Include(s => s.ServerType)
-            .OrderByDescending(s => s.CreatedAt)
-            .Select(s => new GameServerDto
-            {
-                Id = s.Id,
-                ServerName = s.ServerName,
-                IpAddress = s.IpAddress,
-                Port = s.Port,
-                Status = s.Status,
-                Version = s.Version,
-                DeployedAt = s.DeployedAt,
-                ExpiresAt = s.ExpiresAt,
-                LastHeartbeatAt = s.LastHeartbeatAt,
-                CreatedAt = s.CreatedAt,
-                ServerTypeName = s.ServerType.Name,
-                GameName = s.ServerType.GameName
-            })
-            .ToListAsync();
+        var servers = await _unitOfWork.GameServers.GetByUserIdAsync(userId);
 
-        return Ok(servers);
+        var serverDtos = servers.Select(s => new GameServerDto
+        {
+            Id = s.Id,
+            ServerName = s.ServerName,
+            IpAddress = s.IpAddress,
+            Port = s.Port,
+            Status = s.Status,
+            Version = s.Version,
+            DeployedAt = s.DeployedAt,
+            ExpiresAt = s.ExpiresAt,
+            LastHeartbeatAt = s.LastHeartbeatAt,
+            CreatedAt = s.CreatedAt,
+            ServerTypeName = s.ServerType.Name,
+            GameName = s.ServerType.GameName
+        }).ToList();
+
+        return Ok(serverDtos);
     }
 
     /// <summary>
@@ -121,32 +113,30 @@ public class GameServersController : ControllerBase
     {
         var userId = GetUserId();
 
-        var server = await _context.GameServers
-            .Where(s => s.Id == id && s.UserId == userId)
-            .Include(s => s.ServerType)
-            .Select(s => new GameServerDto
-            {
-                Id = s.Id,
-                ServerName = s.ServerName,
-                IpAddress = s.IpAddress,
-                Port = s.Port,
-                Status = s.Status,
-                Version = s.Version,
-                DeployedAt = s.DeployedAt,
-                ExpiresAt = s.ExpiresAt,
-                LastHeartbeatAt = s.LastHeartbeatAt,
-                CreatedAt = s.CreatedAt,
-                ServerTypeName = s.ServerType.Name,
-                GameName = s.ServerType.GameName
-            })
-            .FirstOrDefaultAsync();
+        var server = await _unitOfWork.GameServers.GetWithServerTypeAsync(id);
 
-        if (server == null)
+        if (server == null || server.UserId != userId)
         {
             return NotFound(new { message = "Server not found" });
         }
 
-        return Ok(server);
+        var serverDto = new GameServerDto
+        {
+            Id = server.Id,
+            ServerName = server.ServerName,
+            IpAddress = server.IpAddress,
+            Port = server.Port,
+            Status = server.Status,
+            Version = server.Version,
+            DeployedAt = server.DeployedAt,
+            ExpiresAt = server.ExpiresAt,
+            LastHeartbeatAt = server.LastHeartbeatAt,
+            CreatedAt = server.CreatedAt,
+            ServerTypeName = server.ServerType.Name,
+            GameName = server.ServerType.GameName
+        };
+
+        return Ok(serverDto);
     }
 
     /// <summary>
@@ -158,10 +148,9 @@ public class GameServersController : ControllerBase
         var userId = GetUserId();
 
         // Verify ownership
-        var server = await _context.GameServers
-            .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(id);
 
-        if (server == null)
+        if (server == null || server.UserId != userId)
         {
             return NotFound(new { message = "Server not found" });
         }
@@ -187,10 +176,9 @@ public class GameServersController : ControllerBase
         var userId = GetUserId();
 
         // Verify ownership
-        var server = await _context.GameServers
-            .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(id);
 
-        if (server == null)
+        if (server == null || server.UserId != userId)
         {
             return NotFound(new { message = "Server not found" });
         }
@@ -226,10 +214,9 @@ public class GameServersController : ControllerBase
         var userId = GetUserId();
 
         // Verify ownership
-        var server = await _context.GameServers
-            .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(id);
 
-        if (server == null)
+        if (server == null || server.UserId != userId)
         {
             return NotFound(new { message = "Server not found" });
         }
@@ -265,10 +252,9 @@ public class GameServersController : ControllerBase
         var userId = GetUserId();
 
         // Verify ownership
-        var server = await _context.GameServers
-            .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(id);
 
-        if (server == null)
+        if (server == null || server.UserId != userId)
         {
             return NotFound(new { message = "Server not found" });
         }
@@ -304,10 +290,9 @@ public class GameServersController : ControllerBase
         var userId = GetUserId();
 
         // Verify ownership
-        var server = await _context.GameServers
-            .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(id);
 
-        if (server == null)
+        if (server == null || server.UserId != userId)
         {
             return NotFound(new { message = "Server not found" });
         }
@@ -339,10 +324,9 @@ public class GameServersController : ControllerBase
         var userId = GetUserId();
 
         // Verify ownership
-        var server = await _context.GameServers
-            .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(id);
 
-        if (server == null)
+        if (server == null || server.UserId != userId)
         {
             return NotFound(new { message = "Server not found" });
         }
@@ -368,10 +352,9 @@ public class GameServersController : ControllerBase
         var userId = GetUserId();
 
         // Verify ownership
-        var server = await _context.GameServers
-            .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(id);
 
-        if (server == null)
+        if (server == null || server.UserId != userId)
         {
             return NotFound(new { message = "Server not found" });
         }

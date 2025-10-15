@@ -1,9 +1,7 @@
-using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Application.DTOs;
 using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Entities;
 using GameServerHosting.Domain.Enums;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Stripe;
 using System.Text.Json;
@@ -16,20 +14,20 @@ namespace GameServerHosting.Infrastructure.Services;
 public class PaymentService : IPaymentService
 {
     private readonly StripeSettings _stripeSettings;
-    private readonly GameServerDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<PaymentService> _logger;
     private readonly IEmailService _emailService;
     private readonly IJobSchedulerService _jobScheduler;
 
     public PaymentService(
         IOptions<StripeSettings> stripeSettings,
-        GameServerDbContext context,
+        IUnitOfWork unitOfWork,
         ILogger<PaymentService> logger,
         IEmailService emailService,
         IJobSchedulerService jobScheduler)
     {
         _stripeSettings = stripeSettings.Value;
-        _context = context;
+        _unitOfWork = unitOfWork;
         _logger = logger;
         _emailService = emailService;
         _jobScheduler = jobScheduler;
@@ -49,7 +47,7 @@ public class PaymentService : IPaymentService
         try
         {
             // Validate user exists
-            var user = await _context.Users.FindAsync(userId);
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
             if (user == null)
             {
                 throw new ArgumentException($"User with ID {userId} not found");
@@ -209,7 +207,8 @@ public class PaymentService : IPaymentService
                 payment.RefundReason = reason ?? "Customer request";
                 payment.UpdatedAt = DateTime.UtcNow;
 
-                await _context.SaveChangesAsync();
+                _unitOfWork.Payments.Update(payment);
+                await _unitOfWork.SaveChangesAsync();
 
                 _logger.LogInformation(
                     "Updated payment record {PaymentId} with refund information",
@@ -271,14 +270,11 @@ public class PaymentService : IPaymentService
             }
 
             // Create order if it doesn't exist
-            var order = await _context.Orders
-                .FirstOrDefaultAsync(o => o.PaymentTransactionId == session.Id);
+            var order = await _unitOfWork.Orders.GetByPaymentTransactionIdAsync(session.Id);
 
             if (order == null)
             {
-                var serverPlan = await _context.ServerPlans
-                    .Include(sp => sp.ServerType)
-                    .FirstOrDefaultAsync(sp => sp.Id == serverPlanId);
+                var serverPlan = await _unitOfWork.ServerPlans.GetWithServerTypeAsync(serverPlanId);
 
                 if (serverPlan == null)
                 {
@@ -303,8 +299,8 @@ public class PaymentService : IPaymentService
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                _context.Orders.Add(order);
-                await _context.SaveChangesAsync();
+                await _unitOfWork.Orders.AddAsync(order);
+                await _unitOfWork.SaveChangesAsync();
 
                 _logger.LogInformation(
                     "Created order {OrderId} from checkout session {SessionId}",
@@ -315,7 +311,8 @@ public class PaymentService : IPaymentService
                 order.Status = OrderStatus.Completed;
                 order.PaymentDate = DateTime.UtcNow;
                 order.UpdatedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
+                _unitOfWork.Orders.Update(order);
+                await _unitOfWork.SaveChangesAsync();
 
                 _logger.LogInformation(
                     "Updated order {OrderId} to completed status",
@@ -392,12 +389,7 @@ public class PaymentService : IPaymentService
             // Update order status if applicable
             if (orderId.HasValue)
             {
-                var order = await _context.Orders
-                    .Include(o => o.User)
-                    .Include(o => o.ServerPlan)
-                        .ThenInclude(sp => sp!.ServerType)
-                    .Include(o => o.Payments)
-                    .FirstOrDefaultAsync(o => o.Id == orderId.Value);
+                var order = await _unitOfWork.Orders.GetWithDetailsAsync(orderId.Value);
                     
                 if (order != null && order.Status != OrderStatus.Completed)
                 {
@@ -405,7 +397,8 @@ public class PaymentService : IPaymentService
                     order.PaymentDate = DateTime.UtcNow;
                     order.PaymentTransactionId = paymentIntent.Id;
                     order.UpdatedAt = DateTime.UtcNow;
-                    await _context.SaveChangesAsync();
+                    _unitOfWork.Orders.Update(order);
+                    await _unitOfWork.SaveChangesAsync();
 
                     _logger.LogInformation(
                         "Updated order {OrderId} to completed status from payment intent",
@@ -475,12 +468,13 @@ public class PaymentService : IPaymentService
             // Update order status if applicable
             if (orderId.HasValue)
             {
-                var order = await _context.Orders.FindAsync(orderId.Value);
+                var order = await _unitOfWork.Orders.GetByIdAsync(orderId.Value);
                 if (order != null && order.Status != OrderStatus.Failed)
                 {
                     order.Status = OrderStatus.Failed;
                     order.UpdatedAt = DateTime.UtcNow;
-                    await _context.SaveChangesAsync();
+                    _unitOfWork.Orders.Update(order);
+                    await _unitOfWork.SaveChangesAsync();
 
                     _logger.LogInformation(
                         "Updated order {OrderId} to failed status",
@@ -512,10 +506,9 @@ public class PaymentService : IPaymentService
                 charge.AmountRefunded);
 
             // Find payment by charge ID or payment intent ID
-            var payment = await _context.Payments
-                .FirstOrDefaultAsync(p => 
-                    p.TransactionId == charge.PaymentIntentId || 
-                    p.TransactionId == charge.Id);
+            var payment = await _unitOfWork.Payments.FirstOrDefaultAsync(p => 
+                p.TransactionId == charge.PaymentIntentId || 
+                p.TransactionId == charge.Id);
 
             if (payment == null)
             {
@@ -531,7 +524,8 @@ public class PaymentService : IPaymentService
             payment.RefundAmount = charge.AmountRefunded / 100m;
             payment.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            _unitOfWork.Payments.Update(payment);
+            await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation(
                 "Updated payment {PaymentId} with refund information",
@@ -540,12 +534,13 @@ public class PaymentService : IPaymentService
             // Update associated order if exists
             if (payment.OrderId != Guid.Empty)
             {
-                var order = await _context.Orders.FindAsync(payment.OrderId);
+                var order = await _unitOfWork.Orders.GetByIdAsync(payment.OrderId);
                 if (order != null && charge.Refunded)
                 {
                     order.Status = OrderStatus.Refunded;
                     order.UpdatedAt = DateTime.UtcNow;
-                    await _context.SaveChangesAsync();
+                    _unitOfWork.Orders.Update(order);
+                    await _unitOfWork.SaveChangesAsync();
 
                     _logger.LogInformation(
                         "Updated order {OrderId} to refunded status",
@@ -569,8 +564,7 @@ public class PaymentService : IPaymentService
         try
         {
             // Check if payment record already exists
-            var payment = await _context.Payments
-                .FirstOrDefaultAsync(p => p.TransactionId == paymentIntent.Id);
+            var payment = await _unitOfWork.Payments.GetByTransactionIdAsync(paymentIntent.Id);
 
             var isNew = payment == null;
 
@@ -586,15 +580,20 @@ public class PaymentService : IPaymentService
                     PaymentGateway = "Stripe",
                     CreatedAt = DateTime.UtcNow
                 };
-                _context.Payments.Add(payment);
+                await _unitOfWork.Payments.AddAsync(payment);
             }
 
-            // Update payment details
+            // Update payment details  
             payment.Amount = paymentIntent.Amount / 100m; // Convert from cents to dollars
             payment.Currency = paymentIntent.Currency?.ToUpper() ?? "USD";
             payment.Status = MapPaymentIntentStatus(paymentIntent.Status ?? "unknown");
             payment.PaymentMethod = Shared.Enums.PaymentMethod.Stripe;
             payment.UpdatedAt = DateTime.UtcNow;
+
+            if (!isNew)
+            {
+                _unitOfWork.Payments.Update(payment);
+            }
 
             // Update completion timestamp if succeeded
             if (paymentIntent.Status == "succeeded" && payment.CompletedAt == null)
@@ -668,7 +667,7 @@ public class PaymentService : IPaymentService
                 paymentIntent.ClientSecret
             });
 
-            await _context.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation(
                 "{Action} payment record {PaymentId} for payment intent {PaymentIntentId}",
@@ -688,19 +687,13 @@ public class PaymentService : IPaymentService
     /// <inheritdoc/>
     public async Task<Payment?> GetPaymentByTransactionIdAsync(string transactionId)
     {
-        return await _context.Payments
-            .Include(p => p.Order)
-            .Include(p => p.User)
-            .FirstOrDefaultAsync(p => p.TransactionId == transactionId);
+        return await _unitOfWork.Payments.GetByTransactionIdAsync(transactionId);
     }
 
     /// <inheritdoc/>
     public async Task<Payment?> GetPaymentByIdAsync(Guid paymentId)
     {
-        return await _context.Payments
-            .Include(p => p.Order)
-            .Include(p => p.User)
-            .FirstOrDefaultAsync(p => p.Id == paymentId);
+        return await _unitOfWork.Payments.GetWithDetailsAsync(paymentId);
     }
 
     #region Private Helper Methods
