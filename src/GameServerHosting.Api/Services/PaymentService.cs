@@ -18,17 +18,20 @@ public class PaymentService : IPaymentService
     private readonly GameServerDbContext _context;
     private readonly ILogger<PaymentService> _logger;
     private readonly IEmailService _emailService;
+    private readonly IJobSchedulerService _jobScheduler;
 
     public PaymentService(
         IOptions<StripeSettings> stripeSettings,
         GameServerDbContext context,
         ILogger<PaymentService> logger,
-        IEmailService emailService)
+        IEmailService emailService,
+        IJobSchedulerService jobScheduler)
     {
         _stripeSettings = stripeSettings.Value;
         _context = context;
         _logger = logger;
         _emailService = emailService;
+        _jobScheduler = jobScheduler;
 
         // Set the Stripe API key
         StripeConfiguration.ApiKey = _stripeSettings.SecretKey;
@@ -327,6 +330,21 @@ public class PaymentService : IPaymentService
             if (order.Status == OrderStatus.Completed)
             {
                 await SendOrderConfirmationEmailAsync(order);
+                
+                // Schedule provisioning job for the order
+                try
+                {
+                    var jobKey = await _jobScheduler.ScheduleProvisioningJobAsync(order.Id, delaySeconds: 5);
+                    _logger.LogInformation(
+                        "Scheduled provisioning job {JobKey} for order {OrderId}",
+                        jobKey, order.Id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Failed to schedule provisioning job for order {OrderId}. Manual intervention may be required.",
+                        order.Id);
+                }
             }
         }
         catch (Exception ex)
@@ -394,6 +412,21 @@ public class PaymentService : IPaymentService
 
                     // Send confirmation email
                     await SendOrderConfirmationEmailAsync(order);
+                    
+                    // Schedule provisioning job for the order
+                    try
+                    {
+                        var jobKey = await _jobScheduler.ScheduleProvisioningJobAsync(orderId.Value, delaySeconds: 5);
+                        _logger.LogInformation(
+                            "Scheduled provisioning job {JobKey} for order {OrderId}",
+                            jobKey, orderId.Value);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex,
+                            "Failed to schedule provisioning job for order {OrderId}. Manual intervention may be required.",
+                            orderId.Value);
+                    }
                 }
             }
         }
@@ -542,6 +575,7 @@ public class PaymentService : IPaymentService
 
             if (isNew)
             {
+                // Create new payment record
                 payment = new Payment
                 {
                     Id = Guid.NewGuid(),
