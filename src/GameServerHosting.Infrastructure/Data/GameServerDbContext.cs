@@ -22,6 +22,9 @@ public class GameServerDbContext : IdentityDbContext<ApplicationUser, IdentityRo
     public DbSet<Payment> Payments { get; set; } = null!;
     public DbSet<UserPreferences> UserPreferences { get; set; } = null!;
     public DbSet<CartItem> CartItems { get; set; } = null!;
+    public DbSet<OutboxMessage> OutboxMessages { get; set; } = null!;
+    public DbSet<AsyncOperation> AsyncOperations { get; set; } = null!;
+    public DbSet<IdempotencyKey> IdempotencyKeys { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -807,6 +810,181 @@ public class GameServerDbContext : IdentityDbContext<ApplicationUser, IdentityRo
                 .WithMany()
                 .HasForeignKey(e => e.ServerPlanId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ===== OutboxMessage Configuration =====
+        modelBuilder.Entity<OutboxMessage>(entity =>
+        {
+            entity.ToTable("outbox_messages");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Id)
+                .HasColumnName("id")
+                .HasDefaultValueSql("uuid_generate_v4()");
+            
+            entity.Property(e => e.EventType)
+                .HasColumnName("event_type")
+                .HasMaxLength(500)
+                .IsRequired();
+            
+            entity.Property(e => e.Payload)
+                .HasColumnName("payload")
+                .HasColumnType("jsonb")
+                .IsRequired();
+            
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .IsRequired();
+            
+            entity.Property(e => e.ProcessedAt)
+                .HasColumnName("processed_at");
+            
+            entity.Property(e => e.Error)
+                .HasColumnName("error");
+            
+            entity.Property(e => e.ProcessingAttempts)
+                .HasColumnName("processing_attempts")
+                .HasDefaultValue(0)
+                .IsRequired();
+            
+            entity.Property(e => e.CorrelationId)
+                .HasColumnName("correlation_id");
+            
+            // Indexes
+            entity.HasIndex(e => e.ProcessedAt).HasDatabaseName("idx_outbox_messages_processed_at");
+            entity.HasIndex(e => e.CreatedAt).HasDatabaseName("idx_outbox_messages_created_at");
+            entity.HasIndex(e => e.CorrelationId).HasDatabaseName("idx_outbox_messages_correlation_id");
+            entity.HasIndex(e => new { e.ProcessedAt, e.CreatedAt })
+                .HasDatabaseName("idx_outbox_messages_pending")
+                .HasFilter("processed_at IS NULL");
+        });
+
+        // ===== AsyncOperation Configuration =====
+        modelBuilder.Entity<AsyncOperation>(entity =>
+        {
+            entity.ToTable("async_operations");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Id)
+                .HasColumnName("id")
+                .HasDefaultValueSql("uuid_generate_v4()");
+            
+            entity.Property(e => e.UserId)
+                .HasColumnName("user_id")
+                .IsRequired();
+            
+            entity.Property(e => e.OperationType)
+                .HasColumnName("operation_type")
+                .HasMaxLength(100)
+                .IsRequired();
+            
+            entity.Property(e => e.Status)
+                .HasColumnName("status")
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+            
+            entity.Property(e => e.ResourceId)
+                .HasColumnName("resource_id");
+            
+            entity.Property(e => e.ResourceType)
+                .HasColumnName("resource_type")
+                .HasMaxLength(100);
+            
+            entity.Property(e => e.CorrelationId)
+                .HasColumnName("correlation_id")
+                .IsRequired();
+            
+            entity.Property(e => e.ProgressPercentage)
+                .HasColumnName("progress_percentage");
+            
+            entity.Property(e => e.StatusMessage)
+                .HasColumnName("status_message")
+                .HasMaxLength(500);
+            
+            entity.Property(e => e.ErrorMessage)
+                .HasColumnName("error_message");
+            
+            entity.Property(e => e.ErrorCode)
+                .HasColumnName("error_code")
+                .HasMaxLength(50);
+            
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .IsRequired();
+            
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("updated_at")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .IsRequired();
+            
+            entity.Property(e => e.CompletedAt)
+                .HasColumnName("completed_at");
+            
+            entity.Property(e => e.Metadata)
+                .HasColumnName("metadata")
+                .HasColumnType("jsonb");
+            
+            // Indexes
+            entity.HasIndex(e => e.UserId).HasDatabaseName("idx_async_operations_user_id");
+            entity.HasIndex(e => e.CorrelationId).IsUnique().HasDatabaseName("idx_async_operations_correlation_id");
+            entity.HasIndex(e => e.Status).HasDatabaseName("idx_async_operations_status");
+            entity.HasIndex(e => new { e.ResourceType, e.ResourceId }).HasDatabaseName("idx_async_operations_resource");
+            entity.HasIndex(e => e.CreatedAt).HasDatabaseName("idx_async_operations_created_at");
+            entity.HasIndex(e => new { e.UserId, e.Status }).HasDatabaseName("idx_async_operations_user_status");
+            
+            // Relationships
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ===== IdempotencyKey Configuration =====
+        modelBuilder.Entity<IdempotencyKey>(entity =>
+        {
+            entity.ToTable("idempotency_keys");
+            entity.HasKey(e => e.Key);
+            
+            entity.Property(e => e.Key)
+                .HasColumnName("key")
+                .HasMaxLength(255)
+                .IsRequired();
+            
+            entity.Property(e => e.UserId)
+                .HasColumnName("user_id")
+                .IsRequired();
+            
+            entity.Property(e => e.RequestType)
+                .HasColumnName("request_type")
+                .HasMaxLength(100)
+                .IsRequired();
+            
+            entity.Property(e => e.ResourceId)
+                .HasColumnName("resource_id");
+            
+            entity.Property(e => e.StatusCode)
+                .HasColumnName("status_code")
+                .IsRequired();
+            
+            entity.Property(e => e.ResponseBody)
+                .HasColumnName("response_body")
+                .HasColumnType("jsonb");
+            
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .IsRequired();
+            
+            entity.Property(e => e.ExpiresAt)
+                .HasColumnName("expires_at");
+            
+            // Indexes
+            entity.HasIndex(e => e.UserId).HasDatabaseName("idx_idempotency_keys_user_id");
+            entity.HasIndex(e => e.ExpiresAt).HasDatabaseName("idx_idempotency_keys_expires_at");
+            entity.HasIndex(e => new { e.UserId, e.RequestType }).HasDatabaseName("idx_idempotency_keys_user_request");
         });
     }
 }

@@ -15,6 +15,14 @@ public interface IServerProvisioningService
     Task<Guid> ProvisionServerAsync(Guid orderId);
 
     /// <summary>
+    /// Provisions a specific game server in a given region
+    /// </summary>
+    /// <param name="serverId">The game server ID to provision</param>
+    /// <param name="region">The region to provision the server in</param>
+    /// <returns>The provisioning result</returns>
+    Task<Application.DTOs.ProvisioningResult> ProvisionServerAsync(Guid serverId, string region);
+
+    /// <summary>
     /// Gets the current provisioning status of a server
     /// </summary>
     /// <param name="serverId">The server ID to check</param>

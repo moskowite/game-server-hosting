@@ -33,6 +33,13 @@ public interface IPaymentService
     Task<PaymentIntent> ConfirmPaymentAsync(string paymentIntentId, string? paymentMethodId = null);
 
     /// <summary>
+    /// Captures a previously authorized payment intent
+    /// </summary>
+    /// <param name="paymentIntentId">The payment intent ID to capture</param>
+    /// <returns>The captured payment intent</returns>
+    Task<PaymentIntent> CapturePaymentAsync(string paymentIntentId);
+
+    /// <summary>
     /// Refunds a payment
     /// </summary>
     /// <param name="paymentIntentId">The payment intent ID to refund</param>

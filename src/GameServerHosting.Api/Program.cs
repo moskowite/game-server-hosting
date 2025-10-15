@@ -5,6 +5,8 @@ using GameServerHosting.Domain.Entities;
 using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Infrastructure.Jobs;
 using GameServerHosting.Infrastructure.Services;
+using GameServerHosting.Infrastructure.Consumers;
+using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -56,6 +58,9 @@ try
     builder.Services.Configure<ProvisioningSettings>(builder.Configuration.GetSection("Provisioning"));
     builder.Services.Configure<CloudProvidersSettings>(builder.Configuration.GetSection("CloudProviders"));
     builder.Services.Configure<DigitalOceanSettings>(builder.Configuration.GetSection("CloudProviders:DigitalOcean"));
+    
+    // Configure RabbitMQ Settings
+    builder.Services.Configure<RabbitMQSettings>(builder.Configuration.GetSection("RabbitMQ"));
     
     var jwtSecretKey = jwtSettings.GetValue<string>("SecretKey") ?? throw new InvalidOperationException("JWT SecretKey is not configured");
     var jwtIssuer = jwtSettings.GetValue<string>("Issuer") ?? "GameServerHosting.Api";
@@ -161,6 +166,9 @@ try
     // Register Server Management Services
     builder.Services.AddScoped<IServerManagementService, ServerManagementService>();
     builder.Services.AddScoped<IServerStatusNotificationService, ServerStatusNotificationService>();
+    
+    // Register Outbox Service
+    builder.Services.AddScoped<IOutboxService, OutboxService>();
 
     // Register Background Job Services
     builder.Services.AddScoped<ServerProvisioningJob>();
@@ -216,6 +224,67 @@ try
         options.WaitForJobsToComplete = true;
         options.AwaitApplicationStarted = true;
     });
+
+    // Configure MassTransit with RabbitMQ
+    var rabbitMQSettings = builder.Configuration.GetSection("RabbitMQ").Get<RabbitMQSettings>() ?? new RabbitMQSettings();
+    
+    builder.Services.AddMassTransit(x =>
+    {
+        // Register consumers
+        x.AddConsumer<ServerProvisioningRequestedConsumer>();
+        x.AddConsumer<PaymentAuthorizedConsumer>();
+        x.AddConsumer<NotificationConsumer>();
+
+        x.UsingRabbitMq((context, cfg) =>
+        {
+            cfg.Host(rabbitMQSettings.Host, rabbitMQSettings.VirtualHost, h =>
+            {
+                h.Username(rabbitMQSettings.Username);
+                h.Password(rabbitMQSettings.Password);
+            });
+
+            // Configure retry and error handling
+            cfg.UseMessageRetry(r =>
+            {
+                r.Exponential(5, TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(2));
+            });
+
+            // Configure endpoints for consumers
+            cfg.ReceiveEndpoint("server-provisioning-queue", e =>
+            {
+                e.ConfigureConsumer<ServerProvisioningRequestedConsumer>(context);
+                e.UseMessageRetry(r => r.Intervals(
+                    TimeSpan.FromSeconds(5),
+                    TimeSpan.FromSeconds(15),
+                    TimeSpan.FromSeconds(30),
+                    TimeSpan.FromMinutes(1),
+                    TimeSpan.FromMinutes(5)
+                ));
+            });
+
+            cfg.ReceiveEndpoint("payment-queue", e =>
+            {
+                e.ConfigureConsumer<PaymentAuthorizedConsumer>(context);
+                e.UseMessageRetry(r => r.Intervals(
+                    TimeSpan.FromSeconds(3),
+                    TimeSpan.FromSeconds(10),
+                    TimeSpan.FromSeconds(30)
+                ));
+            });
+
+            cfg.ReceiveEndpoint("notification-queue", e =>
+            {
+                e.ConfigureConsumer<NotificationConsumer>(context);
+                // Notifications are best-effort, no retries
+                e.UseMessageRetry(r => r.None());
+            });
+
+            cfg.ConfigureEndpoints(context);
+        });
+    });
+
+    // Add Outbox Dispatcher background service
+    builder.Services.AddHostedService<OutboxDispatcher>();
 
     // Configure CORS
     var corsConfig = builder.Configuration.GetSection("Cors");
