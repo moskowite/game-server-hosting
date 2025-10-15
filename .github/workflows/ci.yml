@@ -11,11 +11,54 @@ env:
   DOTNET_VERSION: '8.0.x'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
+  COVERAGE_THRESHOLD: 80
 
 jobs:
-  build-and-test:
-    name: Build and Test
+  code-formatting:
+    name: Code Formatting Check
     runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Restore dependencies
+      run: dotnet restore GameServerHosting.sln
+    
+    - name: Run dotnet format check
+      run: |
+        echo "## Code Formatting Check 📝" >> $GITHUB_STEP_SUMMARY
+        dotnet format GameServerHosting.sln --verify-no-changes --verbosity diagnostic 2>&1 | tee format-output.log
+        FORMAT_EXIT_CODE=${PIPESTATUS[0]}
+        
+        if [ $FORMAT_EXIT_CODE -ne 0 ]; then
+          echo "❌ **Code formatting issues detected!**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please run \`dotnet format\` locally to fix formatting issues." >> $GITHUB_STEP_SUMMARY
+          exit 1
+        else
+          echo "✅ **All files are properly formatted**" >> $GITHUB_STEP_SUMMARY
+        fi
+    
+    - name: Upload format results
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: format-check-results
+        path: format-output.log
+        retention-days: 7
+
+  build-and-test:
+    name: Build and Test with Coverage
+    runs-on: ubuntu-latest
+    needs: code-formatting
     
     steps:
     - name: Checkout code
@@ -39,12 +82,106 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore GameServerHosting.sln
     
-    - name: Build solution
-      run: dotnet build GameServerHosting.sln --configuration Release --no-restore
+    - name: Build solution with Roslyn Analyzers
+      run: |
+        echo "## Build with Static Analysis 🔍" >> $GITHUB_STEP_SUMMARY
+        dotnet build GameServerHosting.sln --configuration Release --no-restore /p:TreatWarningsAsErrors=true 2>&1 | tee build-output.log
+        BUILD_EXIT_CODE=${PIPESTATUS[0]}
+        
+        # Count warnings and errors
+        WARNING_COUNT=$(grep -c "warning" build-output.log || echo "0")
+        ERROR_COUNT=$(grep -c "error" build-output.log || echo "0")
+        
+        echo "- **Warnings**: $WARNING_COUNT" >> $GITHUB_STEP_SUMMARY
+        echo "- **Errors**: $ERROR_COUNT" >> $GITHUB_STEP_SUMMARY
+        
+        if [ $BUILD_EXIT_CODE -ne 0 ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "❌ **Build failed with errors or warnings**" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        else
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Build succeeded with no warnings or errors**" >> $GITHUB_STEP_SUMMARY
+        fi
     
-    - name: Run tests
-      run: dotnet test GameServerHosting.sln --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+    - name: Run tests with coverage
+      run: |
+        echo "## Test Results 🧪" >> $GITHUB_STEP_SUMMARY
+        
+        # Install coverlet for code coverage
+        dotnet tool install --global coverlet.console || true
+        
+        # Run tests with code coverage
+        dotnet test GameServerHosting.sln \
+          --configuration Release \
+          --no-build \
+          --verbosity normal \
+          --logger "trx;LogFileName=test-results.trx" \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./coverage \
+          -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+        
+        TEST_EXIT_CODE=$?
+        
+        if [ $TEST_EXIT_CODE -eq 0 ]; then
+          echo "✅ **All tests passed**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Some tests failed**" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
       continue-on-error: true  # Continue even if no tests found
+    
+    - name: Check code coverage threshold
+      run: |
+        # Install ReportGenerator
+        dotnet tool install --global dotnet-reportgenerator-globaltool || true
+        
+        # Generate coverage report
+        if [ -d "./coverage" ]; then
+          reportgenerator \
+            -reports:"./coverage/**/coverage.opencover.xml" \
+            -targetdir:"./coverage/report" \
+            -reporttypes:"Html;TextSummary;Badges" \
+            || echo "No coverage reports found, skipping coverage check"
+          
+          # Check if coverage file exists
+          if [ -f "./coverage/report/Summary.txt" ]; then
+            # Extract line coverage percentage
+            COVERAGE=$(grep "Line coverage:" ./coverage/report/Summary.txt | sed 's/.*: \([0-9.]*\)%.*/\1/')
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## Code Coverage 📊" >> $GITHUB_STEP_SUMMARY
+            echo "- **Line Coverage**: ${COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+            echo "- **Threshold**: ${COVERAGE_THRESHOLD}%" >> $GITHUB_STEP_SUMMARY
+            
+            # Compare coverage with threshold
+            if (( $(echo "$COVERAGE < $COVERAGE_THRESHOLD" | bc -l) )); then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "❌ **Coverage below threshold!**" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "Current: ${COVERAGE}% | Required: ${COVERAGE_THRESHOLD}%" >> $GITHUB_STEP_SUMMARY
+              # Don't fail for now since tests might not exist
+              # exit 1
+            else
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "✅ **Coverage meets threshold**" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## Code Coverage 📊" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **No coverage data available** (no tests found or tests not configured for coverage)" >> $GITHUB_STEP_SUMMARY
+          fi
+        fi
+      continue-on-error: true
+    
+    - name: Upload coverage report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: ./coverage/report
+        retention-days: 30
+      continue-on-error: true
     
     - name: Publish test results
       uses: EnricoMi/publish-unit-test-result-action@v2
@@ -68,35 +205,10 @@ jobs:
         path: src/GameServerHosting.Client/bin/Release/net8.0/
         retention-days: 7
 
-  code-quality:
-    name: Code Quality Analysis
+  dependency-security-scan:
+    name: Dependency Vulnerability Scan
     runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v5
-      with:
-        fetch-depth: 0
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v5
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-    
-    - name: Restore dependencies
-      run: dotnet restore GameServerHosting.sln
-    
-    - name: Run dotnet format check
-      run: dotnet format GameServerHosting.sln --verify-no-changes --verbosity diagnostic
-      continue-on-error: true  # Don't fail build on format issues
-    
-    - name: Build with warnings as errors
-      run: dotnet build GameServerHosting.sln --configuration Release --no-restore /p:TreatWarningsAsErrors=false
-      continue-on-error: true
-
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
+    needs: code-formatting
     
     steps:
     - name: Checkout code
@@ -110,26 +222,154 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore GameServerHosting.sln
     
-    - name: Run security scan
+    - name: Run dependency vulnerability scan
       run: |
+        echo "## Dependency Vulnerability Scan 🔒" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Run vulnerability scan
         dotnet list GameServerHosting.sln package --vulnerable --include-transitive 2>&1 | tee security-scan.log
-        if grep -q "has the following vulnerable packages" security-scan.log; then
-          echo "::warning::Vulnerable packages detected. Please review security-scan.log"
+        
+        # Check for critical and high vulnerabilities
+        CRITICAL_COUNT=$(grep -i "critical" security-scan.log | wc -l || echo "0")
+        HIGH_COUNT=$(grep -i "high" security-scan.log | wc -l || echo "0")
+        MODERATE_COUNT=$(grep -i "moderate" security-scan.log | wc -l || echo "0")
+        LOW_COUNT=$(grep -i "low" security-scan.log | wc -l || echo "0")
+        
+        echo "### Vulnerability Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Critical**: $CRITICAL_COUNT" >> $GITHUB_STEP_SUMMARY
+        echo "- **High**: $HIGH_COUNT" >> $GITHUB_STEP_SUMMARY
+        echo "- **Moderate**: $MODERATE_COUNT" >> $GITHUB_STEP_SUMMARY
+        echo "- **Low**: $LOW_COUNT" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Fail on Critical or High vulnerabilities
+        if [ "$CRITICAL_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ]; then
+          echo "❌ **Critical or High severity vulnerabilities detected!**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please update vulnerable packages before merging." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run \`dotnet list package --vulnerable --include-transitive\` locally for details." >> $GITHUB_STEP_SUMMARY
+          exit 1
+        else
+          echo "✅ **No Critical or High severity vulnerabilities found**" >> $GITHUB_STEP_SUMMARY
         fi
-      continue-on-error: true
     
     - name: Upload security scan results
-      uses: actions/upload-artifact@v4
       if: always()
+      uses: actions/upload-artifact@v4
       with:
         name: security-scan-results
         path: security-scan.log
         retention-days: 30
 
+  container-security-scan:
+    name: Container Image Security Scan
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build API Docker image
+      run: |
+        docker build -f src/GameServerHosting.Api/Dockerfile -t game-server-api:${{ github.sha }} .
+    
+    - name: Build Client Docker image
+      run: |
+        docker build -f src/GameServerHosting.Client/Dockerfile -t game-server-client:${{ github.sha }} .
+    
+    - name: Install Trivy
+      run: |
+        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+        echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update
+        sudo apt-get install trivy
+    
+    - name: Scan API image with Trivy
+      run: |
+        echo "## Container Security Scan - API 🐳" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Run Trivy scan
+        trivy image --severity HIGH,CRITICAL --format json --output api-trivy-results.json game-server-api:${{ github.sha }}
+        trivy image --severity HIGH,CRITICAL game-server-api:${{ github.sha }} | tee api-trivy-results.txt
+        
+        # Count vulnerabilities
+        CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' api-trivy-results.json)
+        HIGH_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' api-trivy-results.json)
+        
+        echo "### API Image Vulnerabilities" >> $GITHUB_STEP_SUMMARY
+        echo "- **Critical**: ${CRITICAL_COUNT:-0}" >> $GITHUB_STEP_SUMMARY
+        echo "- **High**: ${HIGH_COUNT:-0}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Store results for later check
+        echo "API_CRITICAL=$CRITICAL_COUNT" >> $GITHUB_ENV
+        echo "API_HIGH=$HIGH_COUNT" >> $GITHUB_ENV
+    
+    - name: Scan Client image with Trivy
+      run: |
+        echo "## Container Security Scan - Client 🐳" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Run Trivy scan
+        trivy image --severity HIGH,CRITICAL --format json --output client-trivy-results.json game-server-client:${{ github.sha }}
+        trivy image --severity HIGH,CRITICAL game-server-client:${{ github.sha }} | tee client-trivy-results.txt
+        
+        # Count vulnerabilities
+        CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' client-trivy-results.json)
+        HIGH_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' client-trivy-results.json)
+        
+        echo "### Client Image Vulnerabilities" >> $GITHUB_STEP_SUMMARY
+        echo "- **Critical**: ${CRITICAL_COUNT:-0}" >> $GITHUB_STEP_SUMMARY
+        echo "- **High**: ${HIGH_COUNT:-0}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Store results for later check
+        echo "CLIENT_CRITICAL=$CRITICAL_COUNT" >> $GITHUB_ENV
+        echo "CLIENT_HIGH=$HIGH_COUNT" >> $GITHUB_ENV
+    
+    - name: Check vulnerability thresholds
+      run: |
+        TOTAL_CRITICAL=$((${API_CRITICAL:-0} + ${CLIENT_CRITICAL:-0}))
+        TOTAL_HIGH=$((${API_HIGH:-0} + ${CLIENT_HIGH:-0}))
+        
+        echo "### Overall Container Security Status" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Total Critical**: $TOTAL_CRITICAL" >> $GITHUB_STEP_SUMMARY
+        echo "- **Total High**: $TOTAL_HIGH" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "$TOTAL_CRITICAL" -gt 0 ] || [ "$TOTAL_HIGH" -gt 0 ]; then
+          echo "❌ **Container images have Critical or High severity vulnerabilities!**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please update base images or vulnerable dependencies." >> $GITHUB_STEP_SUMMARY
+          exit 1
+        else
+          echo "✅ **No Critical or High severity vulnerabilities in container images**" >> $GITHUB_STEP_SUMMARY
+        fi
+    
+    - name: Upload Trivy scan results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-scan-results
+        path: |
+          api-trivy-results.json
+          api-trivy-results.txt
+          client-trivy-results.json
+          client-trivy-results.txt
+        retention-days: 30
+
   publish-packages:
     name: Publish .NET Packages
     runs-on: ubuntu-latest
-    needs: [build-and-test]
+    needs: [build-and-test, dependency-security-scan, container-security-scan]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
@@ -163,3 +403,24 @@ jobs:
         name: client-published
         path: ./publish/client
         retention-days: 30
+  
+  ci-summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [code-formatting, build-and-test, dependency-security-scan, container-security-scan]
+    if: always()
+    
+    steps:
+    - name: Generate CI Summary
+      run: |
+        echo "# CI Pipeline Summary 🚀" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Job Status Overview" >> $GITHUB_STEP_SUMMARY
+        echo "- Code Formatting: ${{ needs.code-formatting.result == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Build & Test: ${{ needs.build-and-test.result == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Dependency Security: ${{ needs.dependency-security-scan.result == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Container Security: ${{ needs.container-security-scan.result == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY

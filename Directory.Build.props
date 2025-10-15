@@ -1,0 +1,63 @@
+<Project>
+  <PropertyGroup>
+    <!-- Enable .NET Analyzers -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisMode>AllEnabledByDefault</AnalysisMode>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    
+    <!-- Treat warnings as errors in Release builds -->
+    <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
+    
+    <!-- Code Analysis -->
+    <AnalysisLevel>latest</AnalysisLevel>
+    
+    <!-- Nullable reference types -->
+    <Nullable>enable</Nullable>
+    
+    <!-- Generate documentation file for public APIs -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    
+    <!-- Strong naming for security -->
+    <SignAssembly>false</SignAssembly>
+    
+    <!-- Enable deterministic builds -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!-- Package Metadata (common across all projects) -->
+  <PropertyGroup>
+    <Authors>Game Server Hosting Team</Authors>
+    <Company>Game Server Hosting</Company>
+    <Copyright>Copyright © 2025 Game Server Hosting</Copyright>
+    <PackageProjectUrl>https://github.com/yourusername/game-server-hosting</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/yourusername/game-server-hosting</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <!-- Security and Code Quality Analyzers -->
+  <ItemGroup>
+    <!-- Security Code Scan -->
+    <PackageReference Include="SecurityCodeScan.VS2019" Version="5.6.7">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    
+    <!-- Roslynator Analyzers for code quality -->
+    <PackageReference Include="Roslynator.Analyzers" Version="4.12.9">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    
+    <!-- StyleCop for code style -->
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- Suppress certain StyleCop rules globally -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);SA0001;SA1600;SA1633;SA1652</NoWarn>
+  </PropertyGroup>
+</Project>
