@@ -39,6 +39,9 @@ try
     builder.Services.AddDbContext<GameServerDbContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+    // Register Unit of Work and Repositories
+    builder.Services.AddScoped<IUnitOfWork, GameServerHosting.Infrastructure.Repositories.UnitOfWork>();
+
     // Configure JWT Settings
     var jwtSettings = builder.Configuration.GetSection("JwtSettings");
     builder.Services.Configure<JwtSettings>(jwtSettings);

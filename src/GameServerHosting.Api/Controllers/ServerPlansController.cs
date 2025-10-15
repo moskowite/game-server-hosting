@@ -1,11 +1,10 @@
-using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Application.DTOs;
+using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Entities;
 using GameServerHosting.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace GameServerHosting.Api.Controllers;
 
@@ -17,16 +16,16 @@ namespace GameServerHosting.Api.Controllers;
 [Produces("application/json")]
 public class ServerPlansController : ControllerBase
 {
-    private readonly GameServerDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<ServerPlansController> _logger;
 
     public ServerPlansController(
-        GameServerDbContext context,
+        IUnitOfWork unitOfWork,
         UserManager<ApplicationUser> userManager,
         ILogger<ServerPlansController> logger)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _userManager = userManager;
         _logger = logger;
     }
@@ -43,37 +42,38 @@ public class ServerPlansController : ControllerBase
     {
         try
         {
-            var query = _context.ServerPlans.AsQueryable();
-
-            // Apply filters
+            IEnumerable<ServerPlan> serverPlans;
+            
             if (isActive.HasValue)
             {
-                query = query.Where(sp => sp.IsActive == isActive.Value);
+                serverPlans = await _unitOfWork.ServerPlans.FindAsync(sp => sp.IsActive == isActive.Value);
+                serverPlans = serverPlans.OrderBy(sp => sp.DisplayOrder).ThenBy(sp => sp.Name);
+            }
+            else
+            {
+                serverPlans = await _unitOfWork.ServerPlans.GetAllAsync();
+                serverPlans = serverPlans.OrderBy(sp => sp.DisplayOrder).ThenBy(sp => sp.Name);
             }
 
-            var serverPlans = await query
-                .OrderBy(sp => sp.DisplayOrder)
-                .ThenBy(sp => sp.Name)
-                .Select(sp => new ServerPlanDto
-                {
-                    Id = sp.Id,
-                    ServerTypeId = sp.ServerTypeId,
-                    Name = sp.Name,
-                    BillingCycle = sp.BillingCycle,
-                    Price = sp.Price,
-                    Currency = sp.Currency,
-                    DurationHours = sp.DurationHours,
-                    DiscountPercentage = sp.DiscountPercentage,
-                    IsActive = sp.IsActive,
-                    DisplayOrder = sp.DisplayOrder,
-                    Description = sp.Description,
-                    CreatedAt = sp.CreatedAt,
-                    UpdatedAt = sp.UpdatedAt
-                })
-                .ToListAsync();
+            var serverPlanDtos = serverPlans.Select(sp => new ServerPlanDto
+            {
+                Id = sp.Id,
+                ServerTypeId = sp.ServerTypeId,
+                Name = sp.Name,
+                BillingCycle = sp.BillingCycle,
+                Price = sp.Price,
+                Currency = sp.Currency,
+                DurationHours = sp.DurationHours,
+                DiscountPercentage = sp.DiscountPercentage,
+                IsActive = sp.IsActive,
+                DisplayOrder = sp.DisplayOrder,
+                Description = sp.Description,
+                CreatedAt = sp.CreatedAt,
+                UpdatedAt = sp.UpdatedAt
+            }).ToList();
 
-            _logger.LogInformation("Retrieved {Count} server plans", serverPlans.Count);
-            return Ok(serverPlans);
+            _logger.LogInformation("Retrieved {Count} server plans", serverPlanDtos.Count);
+            return Ok(serverPlanDtos);
         }
         catch (Exception ex)
         {
@@ -94,25 +94,7 @@ public class ServerPlansController : ControllerBase
     {
         try
         {
-            var serverPlan = await _context.ServerPlans
-                .Where(sp => sp.Id == id)
-                .Select(sp => new ServerPlanDto
-                {
-                    Id = sp.Id,
-                    ServerTypeId = sp.ServerTypeId,
-                    Name = sp.Name,
-                    BillingCycle = sp.BillingCycle,
-                    Price = sp.Price,
-                    Currency = sp.Currency,
-                    DurationHours = sp.DurationHours,
-                    DiscountPercentage = sp.DiscountPercentage,
-                    IsActive = sp.IsActive,
-                    DisplayOrder = sp.DisplayOrder,
-                    Description = sp.Description,
-                    CreatedAt = sp.CreatedAt,
-                    UpdatedAt = sp.UpdatedAt
-                })
-                .FirstOrDefaultAsync();
+            var serverPlan = await _unitOfWork.ServerPlans.GetByIdAsync(id);
 
             if (serverPlan == null)
             {
@@ -120,8 +102,25 @@ public class ServerPlansController : ControllerBase
                 return NotFound(new { message = "Server plan not found" });
             }
 
+            var serverPlanDto = new ServerPlanDto
+            {
+                Id = serverPlan.Id,
+                ServerTypeId = serverPlan.ServerTypeId,
+                Name = serverPlan.Name,
+                BillingCycle = serverPlan.BillingCycle,
+                Price = serverPlan.Price,
+                Currency = serverPlan.Currency,
+                DurationHours = serverPlan.DurationHours,
+                DiscountPercentage = serverPlan.DiscountPercentage,
+                IsActive = serverPlan.IsActive,
+                DisplayOrder = serverPlan.DisplayOrder,
+                Description = serverPlan.Description,
+                CreatedAt = serverPlan.CreatedAt,
+                UpdatedAt = serverPlan.UpdatedAt
+            };
+
             _logger.LogInformation("Retrieved server plan: {Id}", id);
-            return Ok(serverPlan);
+            return Ok(serverPlanDto);
         }
         catch (Exception ex)
         {
@@ -146,44 +145,34 @@ public class ServerPlansController : ControllerBase
         try
         {
             // Check if server type exists
-            var serverTypeExists = await _context.ServerTypes.AnyAsync(st => st.Id == typeId);
+            var serverTypeExists = await _unitOfWork.ServerTypes.AnyAsync(st => st.Id == typeId);
             if (!serverTypeExists)
             {
                 _logger.LogWarning("Server type not found: {TypeId}", typeId);
                 return NotFound(new { message = "Server type not found" });
             }
 
-            var query = _context.ServerPlans.Where(sp => sp.ServerTypeId == typeId);
+            var serverPlans = await _unitOfWork.ServerPlans.GetByServerTypeIdAsync(typeId, isActive);
 
-            // Apply filters
-            if (isActive.HasValue)
+            var serverPlanDtos = serverPlans.Select(sp => new ServerPlanDto
             {
-                query = query.Where(sp => sp.IsActive == isActive.Value);
-            }
+                Id = sp.Id,
+                ServerTypeId = sp.ServerTypeId,
+                Name = sp.Name,
+                BillingCycle = sp.BillingCycle,
+                Price = sp.Price,
+                Currency = sp.Currency,
+                DurationHours = sp.DurationHours,
+                DiscountPercentage = sp.DiscountPercentage,
+                IsActive = sp.IsActive,
+                DisplayOrder = sp.DisplayOrder,
+                Description = sp.Description,
+                CreatedAt = sp.CreatedAt,
+                UpdatedAt = sp.UpdatedAt
+            }).ToList();
 
-            var serverPlans = await query
-                .OrderBy(sp => sp.DisplayOrder)
-                .ThenBy(sp => sp.Name)
-                .Select(sp => new ServerPlanDto
-                {
-                    Id = sp.Id,
-                    ServerTypeId = sp.ServerTypeId,
-                    Name = sp.Name,
-                    BillingCycle = sp.BillingCycle,
-                    Price = sp.Price,
-                    Currency = sp.Currency,
-                    DurationHours = sp.DurationHours,
-                    DiscountPercentage = sp.DiscountPercentage,
-                    IsActive = sp.IsActive,
-                    DisplayOrder = sp.DisplayOrder,
-                    Description = sp.Description,
-                    CreatedAt = sp.CreatedAt,
-                    UpdatedAt = sp.UpdatedAt
-                })
-                .ToListAsync();
-
-            _logger.LogInformation("Retrieved {Count} server plans for server type {TypeId}", serverPlans.Count, typeId);
-            return Ok(serverPlans);
+            _logger.LogInformation("Retrieved {Count} server plans for server type {TypeId}", serverPlanDtos.Count, typeId);
+            return Ok(serverPlanDtos);
         }
         catch (Exception ex)
         {
@@ -223,7 +212,7 @@ public class ServerPlansController : ControllerBase
             }
 
             // Check if server type exists
-            var serverTypeExists = await _context.ServerTypes.AnyAsync(st => st.Id == request.ServerTypeId);
+            var serverTypeExists = await _unitOfWork.ServerTypes.AnyAsync(st => st.Id == request.ServerTypeId);
             if (!serverTypeExists)
             {
                 _logger.LogWarning("Server type not found: {ServerTypeId}", request.ServerTypeId);
@@ -231,11 +220,9 @@ public class ServerPlansController : ControllerBase
             }
 
             // Check if a plan with the same name already exists for this server type
-            var existingPlan = await _context.ServerPlans
-                .FirstOrDefaultAsync(sp => sp.ServerTypeId == request.ServerTypeId 
-                    && sp.Name.ToLower() == request.Name.ToLower());
+            var existingPlan = await _unitOfWork.ServerPlans.ExistsWithNameAsync(request.ServerTypeId, request.Name);
 
-            if (existingPlan != null)
+            if (existingPlan)
             {
                 _logger.LogWarning("Server plan with name {Name} already exists for server type {ServerTypeId}", 
                     request.Name, request.ServerTypeId);
@@ -259,8 +246,8 @@ public class ServerPlansController : ControllerBase
                 UpdatedAt = DateTime.UtcNow
             };
 
-            _context.ServerPlans.Add(serverPlan);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.ServerPlans.AddAsync(serverPlan);
+            await _unitOfWork.SaveChangesAsync();
 
             var dto = new ServerPlanDto
             {
@@ -322,7 +309,7 @@ public class ServerPlansController : ControllerBase
                 return StatusCode(403, new { message = "Only administrators can update server plans" });
             }
 
-            var serverPlan = await _context.ServerPlans.FindAsync(id);
+            var serverPlan = await _unitOfWork.ServerPlans.GetByIdAsync(id);
             if (serverPlan == null)
             {
                 _logger.LogWarning("Server plan not found for update: {Id}", id);
@@ -330,12 +317,12 @@ public class ServerPlansController : ControllerBase
             }
 
             // Check if another plan with same name already exists for this server type
-            var existingPlan = await _context.ServerPlans
-                .FirstOrDefaultAsync(sp => sp.ServerTypeId == serverPlan.ServerTypeId 
-                    && sp.Name.ToLower() == request.Name.ToLower() 
-                    && sp.Id != id);
+            var existingPlan = await _unitOfWork.ServerPlans.ExistsWithNameAsync(
+                serverPlan.ServerTypeId, 
+                request.Name, 
+                id);
 
-            if (existingPlan != null)
+            if (existingPlan)
             {
                 _logger.LogWarning("Server plan with name {Name} already exists for server type {ServerTypeId}", 
                     request.Name, serverPlan.ServerTypeId);
@@ -354,7 +341,8 @@ public class ServerPlansController : ControllerBase
             serverPlan.Description = request.Description;
             serverPlan.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            _unitOfWork.ServerPlans.Update(serverPlan);
+            await _unitOfWork.SaveChangesAsync();
 
             var dto = new ServerPlanDto
             {
@@ -414,9 +402,17 @@ public class ServerPlansController : ControllerBase
                 return StatusCode(403, new { message = "Only administrators can delete server plans" });
             }
 
-            var serverPlan = await _context.ServerPlans
-                .Include(sp => sp.Orders)
-                .FirstOrDefaultAsync(sp => sp.Id == id);
+            // Get server plan with its orders to check if it's in use
+            var serverPlan = await _unitOfWork.ServerPlans.GetByIdAsync(id);
+            if (serverPlan != null)
+            {
+                var orders = await _unitOfWork.Orders.FindAsync(o => o.ServerPlanId == id);
+                if (orders.Any())
+                {
+                    _logger.LogWarning("Cannot delete server plan {Id} - it is in use", id);
+                    return BadRequest(new { message = "Cannot delete server plan that is in use by orders" });
+                }
+            }
 
             if (serverPlan == null)
             {
@@ -424,15 +420,8 @@ public class ServerPlansController : ControllerBase
                 return NotFound(new { message = "Server plan not found" });
             }
 
-            // Check if server plan is in use
-            if (serverPlan.Orders.Any())
-            {
-                _logger.LogWarning("Cannot delete server plan {Id} - it is in use", id);
-                return BadRequest(new { message = "Cannot delete server plan that is in use by orders" });
-            }
-
-            _context.ServerPlans.Remove(serverPlan);
-            await _context.SaveChangesAsync();
+            _unitOfWork.ServerPlans.Remove(serverPlan);
+            await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("Server plan deleted: {Id} by user {UserId}", id, userId);
             return Ok(new { message = "Server plan deleted successfully" });

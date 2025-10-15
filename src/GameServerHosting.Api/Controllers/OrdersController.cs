@@ -1,4 +1,3 @@
-using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Application.DTOs;
 using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Entities;
@@ -6,7 +5,6 @@ using GameServerHosting.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace GameServerHosting.Api.Controllers;
 
@@ -19,22 +17,22 @@ namespace GameServerHosting.Api.Controllers;
 [Authorize]
 public class OrdersController : ControllerBase
 {
-    private readonly GameServerDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<OrdersController> _logger;
     private readonly IOrderValidationService _orderValidationService;
     private readonly IInvoiceService _invoiceService;
 
     public OrdersController(
-        GameServerDbContext context,
+        IUnitOfWork unitOfWork,
         UserManager<ApplicationUser> userManager,
-        ILogger<OrdersController> logger,
+        ILogger<OrdersController> _logger,
         IOrderValidationService orderValidationService,
         IInvoiceService invoiceService)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _userManager = userManager;
-        _logger = logger;
+        this._logger = _logger;
         _orderValidationService = orderValidationService;
         _invoiceService = invoiceService;
     }
