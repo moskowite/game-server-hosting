@@ -68,7 +68,11 @@ public static class QuartzRetryPolicy
         int maxRetries = 3,
         int[]? retryIntervals = null)
     {
-        var jobData = new JobDataMap(data);
+        var jobData = new JobDataMap();
+        foreach (var kvp in data)
+        {
+            jobData.Put(kvp.Key, kvp.Value);
+        }
         jobData.Put("maxRetries", maxRetries);
         jobData.Put("retryIntervals", retryIntervals ?? new[] { 60, 300, 900 });
         jobData.Put("currentAttempt", 0);

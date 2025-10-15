@@ -170,8 +170,7 @@ try
         q.SchedulerName = "GameServerHostingScheduler";
         q.SchedulerId = "AUTO";
 
-        // Use JSON serialization for job data
-        q.UseMicrosoftDependencyInjectionJobFactory();
+        // Configure job store and serialization
         q.UseSimpleTypeLoader();
         q.UseInMemoryStore();
         q.UseDefaultThreadPool(tp =>
@@ -205,12 +204,6 @@ try
                 .WithDescription($"Trigger for health check job: {healthCheckSchedule}")
             );
         }
-
-        // Configure logging plugin
-        q.UseJobAutoInterrupt(options =>
-        {
-            options.DefaultMaxRunTime = TimeSpan.FromMinutes(10);
-        });
     });
 
     // Add Quartz hosted service
