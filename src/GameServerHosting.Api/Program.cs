@@ -1,5 +1,6 @@
 using System.Text;
 using GameServerHosting.Api.Data;
+using GameServerHosting.Api.Jobs;
 using GameServerHosting.Api.Models;
 using GameServerHosting.Api.Services;
 using GameServerHosting.Shared.Entities;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Quartz;
 using Serilog;
 using Serilog.Events;
 
@@ -155,6 +157,68 @@ try
     // Register Server Management Services
     builder.Services.AddScoped<IServerManagementService, ServerManagementService>();
     builder.Services.AddScoped<IServerStatusNotificationService, ServerStatusNotificationService>();
+
+    // Register Background Job Services
+    builder.Services.AddScoped<ServerProvisioningJob>();
+    builder.Services.AddScoped<ServerHealthCheckJob>();
+    builder.Services.AddScoped<IJobSchedulerService, JobSchedulerService>();
+
+    // Configure Quartz.NET for background job processing
+    builder.Services.AddQuartz(q =>
+    {
+        // Use a unique scheduler instance name
+        q.SchedulerName = "GameServerHostingScheduler";
+        q.SchedulerId = "AUTO";
+
+        // Use JSON serialization for job data
+        q.UseMicrosoftDependencyInjectionJobFactory();
+        q.UseSimpleTypeLoader();
+        q.UseInMemoryStore();
+        q.UseDefaultThreadPool(tp =>
+        {
+            tp.MaxConcurrency = 10;
+        });
+
+        // Configure retry logic for provisioning jobs
+        q.AddJob<QuartzServerProvisioningJob>(opts => opts
+            .WithIdentity("default-provisioning-job")
+            .StoreDurably()
+        );
+
+        // Configure the health check job with a schedule
+        var healthCheckConfig = builder.Configuration.GetSection("Jobs:HealthCheck");
+        var healthCheckEnabled = healthCheckConfig.GetValue<bool>("Enabled", true);
+        var healthCheckSchedule = healthCheckConfig.GetValue<string>("CronSchedule") ?? "0 0/5 * * * ?";
+
+        if (healthCheckEnabled)
+        {
+            var healthCheckJobKey = new JobKey("health-check-job", "monitoring");
+            q.AddJob<QuartzServerHealthCheckJob>(opts => opts
+                .WithIdentity(healthCheckJobKey)
+                .WithDescription("Periodic health check for all running servers")
+            );
+
+            q.AddTrigger(opts => opts
+                .ForJob(healthCheckJobKey)
+                .WithIdentity("health-check-trigger", "monitoring")
+                .WithCronSchedule(healthCheckSchedule)
+                .WithDescription($"Trigger for health check job: {healthCheckSchedule}")
+            );
+        }
+
+        // Configure logging plugin
+        q.UseJobAutoInterrupt(options =>
+        {
+            options.DefaultMaxRunTime = TimeSpan.FromMinutes(10);
+        });
+    });
+
+    // Add Quartz hosted service
+    builder.Services.AddQuartzHostedService(options =>
+    {
+        options.WaitForJobsToComplete = true;
+        options.AwaitApplicationStarted = true;
+    });
 
     // Configure CORS
     var corsConfig = builder.Configuration.GetSection("Cors");
