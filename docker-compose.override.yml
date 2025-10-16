@@ -27,15 +27,16 @@ services:
     build:
       context: .
       dockerfile: src/GameServerHosting.Api/Dockerfile
-      target: build  # Stop at build stage for debugging
+      # target: build  # Commented out - use runtime stage for proper app execution
 
   client:
     environment:
       # Development API endpoint (connects to local API container)
       ApiSettings__BaseUrl: "http://localhost:5292"
-    volumes:
-      # Hot reload support - mount source code
-      - ./src/GameServerHosting.Client/wwwroot:/usr/share/nginx/html:ro
+    # volumes:
+      # Note: Blazor WASM doesn't support hot reload via volume mounts
+      # The compiled output must be used, not the source wwwroot
+      # - ./src/GameServerHosting.Client/wwwroot:/usr/share/nginx/html:ro
     ports:
       - "5173:80"
 
@@ -70,7 +71,7 @@ services:
       - "5050:80"
     environment:
       # Development credentials (DO NOT use in production)
-      PGADMIN_DEFAULT_EMAIL: admin@gameserver.local
+      PGADMIN_DEFAULT_EMAIL: admin@moskowite.com
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"

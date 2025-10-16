@@ -73,6 +73,7 @@ CREATE TABLE server_types (
     monthly_price DECIMAL(10, 2) NOT NULL,
     docker_image VARCHAR(255) NOT NULL,
     default_config JSONB NOT NULL DEFAULT '{}',
+    default_version VARCHAR(50),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -111,6 +112,17 @@ CREATE TABLE game_servers (
     last_heartbeat_at TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Provisioning fields
+    provider_type VARCHAR(50),
+    provider_id VARCHAR(100),
+    provider_region VARCHAR(50),
+    provisioning_started_at TIMESTAMP,
+    provisioning_completed_at TIMESTAMP,
+    provisioning_error TEXT,
+    ssh_key_private TEXT,
+    ssh_key_public TEXT,
+    health_check_status VARCHAR(50),
     
     CONSTRAINT chk_port_range CHECK (port IS NULL OR (port >= 1 AND port <= 65535)),
     CONSTRAINT uq_user_server_name UNIQUE (user_id, server_name)

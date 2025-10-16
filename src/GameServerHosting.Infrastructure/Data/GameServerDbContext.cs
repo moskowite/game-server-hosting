@@ -312,6 +312,10 @@ public class GameServerDbContext : IdentityDbContext<ApplicationUser, IdentityRo
                 .HasDefaultValue("{}")
                 .IsRequired();
             
+            entity.Property(e => e.DefaultVersion)
+                .HasColumnName("default_version")
+                .HasMaxLength(50);
+            
             entity.Property(e => e.IsActive)
                 .HasColumnName("is_active")
                 .HasDefaultValue(true)
@@ -413,6 +417,38 @@ public class GameServerDbContext : IdentityDbContext<ApplicationUser, IdentityRo
                 .HasColumnName("updated_at")
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .IsRequired();
+            
+            // Provisioning fields
+            entity.Property(e => e.ProviderType)
+                .HasColumnName("provider_type")
+                .HasMaxLength(50);
+            
+            entity.Property(e => e.ProviderId)
+                .HasColumnName("provider_id")
+                .HasMaxLength(100);
+            
+            entity.Property(e => e.ProviderRegion)
+                .HasColumnName("provider_region")
+                .HasMaxLength(50);
+            
+            entity.Property(e => e.ProvisioningStartedAt)
+                .HasColumnName("provisioning_started_at");
+            
+            entity.Property(e => e.ProvisioningCompletedAt)
+                .HasColumnName("provisioning_completed_at");
+            
+            entity.Property(e => e.ProvisioningError)
+                .HasColumnName("provisioning_error");
+            
+            entity.Property(e => e.SshKeyPrivate)
+                .HasColumnName("ssh_key_private");
+            
+            entity.Property(e => e.SshKeyPublic)
+                .HasColumnName("ssh_key_public");
+            
+            entity.Property(e => e.HealthCheckStatus)
+                .HasColumnName("health_check_status")
+                .HasMaxLength(50);
             
             // Indexes
             entity.HasIndex(e => e.UserId).HasDatabaseName("idx_game_servers_user_id");
