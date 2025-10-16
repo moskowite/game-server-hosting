@@ -145,6 +145,127 @@ public class ServerProvisioningService : IServerProvisioningService
     }
 
     /// <inheritdoc/>
+    public async Task<ProvisioningResult> ProvisionServerAsync(Guid serverId, string region)
+    {
+        _logger.LogInformation("Starting provisioning for server {ServerId} in region {Region}", serverId, region);
+
+        try
+        {
+            // Step 1: Load the server
+            var server = await _context.GameServers
+                .Include(s => s.ServerType)
+                .Include(s => s.User)
+                .FirstOrDefaultAsync(s => s.Id == serverId);
+
+            if (server == null)
+            {
+                return new ProvisioningResult
+                {
+                    IsSuccess = false,
+                    ErrorMessage = $"Server {serverId} not found",
+                    ErrorCode = "SERVER_NOT_FOUND",
+                    IsRetryable = false
+                };
+            }
+
+            // Step 2: Validate server is in correct state
+            if (server.Status != ServerStatus.Pending && server.Status != ServerStatus.Provisioning)
+            {
+                return new ProvisioningResult
+                {
+                    IsSuccess = false,
+                    ErrorMessage = $"Server is in {server.Status} state, cannot provision",
+                    ErrorCode = "INVALID_STATE",
+                    IsRetryable = false
+                };
+            }
+
+            // Step 3: Update status to provisioning
+            server.Status = ServerStatus.Provisioning;
+            server.ProvisioningStartedAt = DateTime.UtcNow;
+            server.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            // Step 4: Create provision request with specified region
+            var provisionRequest = new ServerProvisionRequest
+            {
+                ServerId = server.Id,
+                UserId = server.UserId,
+                ServerType = server.ServerType!.GameName,
+                ServerName = server.ServerName,
+                RamMb = 2048, // Default, should be from server plan
+                CpuCores = 2,
+                StorageGb = 50,
+                GameVersion = server.Version,
+                Region = region
+            };
+
+            // Step 5: Provision with cloud provider
+            var cloudResult = await _cloudProvider.CreateServerAsync(provisionRequest);
+
+            if (!cloudResult.Success)
+            {
+                // Update server to failed state
+                server.Status = ServerStatus.Failed;
+                server.ProvisioningError = cloudResult.ErrorMessage;
+                server.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                return new ProvisioningResult
+                {
+                    IsSuccess = false,
+                    ErrorMessage = cloudResult.ErrorMessage,
+                    ErrorCode = "CLOUD_PROVIDER_ERROR",
+                    IsRetryable = true
+                };
+            }
+
+            // Step 6: Update server with provisioning results
+            server.ProviderId = cloudResult.ProviderId;
+            server.IpAddress = cloudResult.IpAddress;
+            server.Port = cloudResult.Port ?? GetDefaultPort(server.ServerType.GameName);
+            server.ProvisioningCompletedAt = DateTime.UtcNow;
+            server.DeployedAt = DateTime.UtcNow;
+            server.Status = ServerStatus.Running;
+            server.HealthCheckStatus = "healthy";
+            server.LastHeartbeatAt = DateTime.UtcNow;
+            server.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "Successfully provisioned server {ServerId} at {IpAddress}:{Port}",
+                serverId, server.IpAddress, server.Port);
+
+            // Step 7: Send notification
+            if (_settings.SendNotifications)
+            {
+                await SendProvisioningNotificationAsync(server);
+            }
+
+            return new ProvisioningResult
+            {
+                IsSuccess = true,
+                IpAddress = server.IpAddress,
+                Port = server.Port ?? 0,
+                ProviderServerId = server.ProviderId
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to provision server {ServerId} in region {Region}", serverId, region);
+
+            return new ProvisioningResult
+            {
+                IsSuccess = false,
+                ErrorMessage = ex.Message,
+                ErrorCode = "UNEXPECTED_ERROR",
+                IsRetryable = true
+            };
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<ProvisioningStatus> GetProvisioningStatusAsync(Guid serverId)
     {
         var server = await _context.GameServers
