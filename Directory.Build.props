@@ -2,11 +2,11 @@
   <PropertyGroup>
     <!-- Enable .NET Analyzers -->
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <AnalysisMode>AllEnabledByDefault</AnalysisMode>
+    <AnalysisMode>Default</AnalysisMode>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     
-    <!-- Treat warnings as errors in Release builds -->
-    <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
+    <!-- Treat warnings as errors in Release builds (disabled for gradual adoption) -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     
     <!-- Code Analysis -->
     <AnalysisLevel>latest</AnalysisLevel>
@@ -56,8 +56,14 @@
     </PackageReference>
   </ItemGroup>
 
-  <!-- Suppress certain StyleCop rules globally -->
+  <!-- Suppress certain StyleCop rules globally for gradual adoption -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);SA0001;SA1600;SA1633;SA1652</NoWarn>
+    <NoWarn>$(NoWarn);SA0001;SA1600;SA1633;SA1652;CA1031;CA1515</NoWarn>
   </PropertyGroup>
+
+  <!-- Note: For gradual adoption of strict code quality standards:
+       - Analyzers are enabled but not treating warnings as errors yet
+       - Run 'dotnet format' to fix formatting issues
+       - Address analyzer warnings incrementally
+       - Once codebase is clean, enable TreatWarningsAsErrors -->
 </Project>

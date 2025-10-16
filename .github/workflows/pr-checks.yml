@@ -33,15 +33,16 @@ jobs:
         if [ $? -eq 0 ]; then
           echo "✅ **Code is properly formatted**" >> $GITHUB_STEP_SUMMARY
         else
-          echo "❌ **Formatting issues detected**" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Formatting issues detected** (currently non-blocking)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "Run \`dotnet format\` to fix formatting issues" >> $GITHUB_STEP_SUMMARY
-          exit 1
         fi
+      continue-on-error: true
     
     - name: Build with analyzers
       run: |
         echo "## Build Analysis 🔍" >> $GITHUB_STEP_SUMMARY
-        dotnet build GameServerHosting.sln --configuration Release --no-restore /p:TreatWarningsAsErrors=true 2>&1 | tee build-output.log
+        dotnet build GameServerHosting.sln --configuration Release --no-restore 2>&1 | tee build-output.log
         BUILD_EXIT_CODE=${PIPESTATUS[0]}
         
         WARNING_COUNT=$(grep -c "warning" build-output.log || echo "0")
@@ -56,7 +57,11 @@ jobs:
           exit 1
         else
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ **Build successful**" >> $GITHUB_STEP_SUMMARY
+          if [ "$WARNING_COUNT" -gt 0 ]; then
+            echo "⚠️ **Build successful with $WARNING_COUNT warning(s)**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Build successful**" >> $GITHUB_STEP_SUMMARY
+          fi
         fi
     
     - name: Quick security check

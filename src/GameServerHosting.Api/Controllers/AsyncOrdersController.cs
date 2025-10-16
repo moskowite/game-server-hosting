@@ -177,7 +177,7 @@ internal class AsyncOrdersController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "Invalid operation while creating async order for user {UserId}", userId);
-            
+
             // Rollback transaction
             try
             {
@@ -197,7 +197,7 @@ internal class AsyncOrdersController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error creating async order for user {UserId}", userId);
-            
+
             // Rollback transaction
             try
             {
@@ -224,7 +224,7 @@ internal class AsyncOrdersController : ControllerBase
 
     // NOTE: This is a temporary reference to context for demonstration
     // In a real implementation, AsyncOperations would be part of UnitOfWork
-    private Infrastructure.Data.GameServerDbContext Context => 
+    private Infrastructure.Data.GameServerDbContext Context =>
         (Infrastructure.Data.GameServerDbContext)_unitOfWork.GetType()
             .GetField("_context", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
             .GetValue(_unitOfWork)!;

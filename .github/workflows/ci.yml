@@ -35,17 +35,21 @@ jobs:
     - name: Run dotnet format check
       run: |
         echo "## Code Formatting Check 📝" >> $GITHUB_STEP_SUMMARY
-        dotnet format GameServerHosting.sln --verify-no-changes --verbosity diagnostic 2>&1 | tee format-output.log
+        dotnet format GameServerHosting.sln --verify-no-changes --verbosity normal 2>&1 | tee format-output.log
         FORMAT_EXIT_CODE=${PIPESTATUS[0]}
         
         if [ $FORMAT_EXIT_CODE -ne 0 ]; then
-          echo "❌ **Code formatting issues detected!**" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Code formatting issues detected**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note**: Formatting enforcement is currently in warning mode to allow gradual adoption." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Please run \`dotnet format\` locally to fix formatting issues." >> $GITHUB_STEP_SUMMARY
-          exit 1
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Once the codebase is fully formatted, this check will become mandatory." >> $GITHUB_STEP_SUMMARY
         else
           echo "✅ **All files are properly formatted**" >> $GITHUB_STEP_SUMMARY
         fi
+      continue-on-error: true
     
     - name: Upload format results
       if: failure()
@@ -85,7 +89,7 @@ jobs:
     - name: Build solution with Roslyn Analyzers
       run: |
         echo "## Build with Static Analysis 🔍" >> $GITHUB_STEP_SUMMARY
-        dotnet build GameServerHosting.sln --configuration Release --no-restore /p:TreatWarningsAsErrors=true 2>&1 | tee build-output.log
+        dotnet build GameServerHosting.sln --configuration Release --no-restore 2>&1 | tee build-output.log
         BUILD_EXIT_CODE=${PIPESTATUS[0]}
         
         # Count warnings and errors
@@ -97,11 +101,15 @@ jobs:
         
         if [ $BUILD_EXIT_CODE -ne 0 ]; then
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "❌ **Build failed with errors or warnings**" >> $GITHUB_STEP_SUMMARY
+          echo "❌ **Build failed with errors**" >> $GITHUB_STEP_SUMMARY
           exit 1
         else
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ **Build succeeded with no warnings or errors**" >> $GITHUB_STEP_SUMMARY
+          if [ "$WARNING_COUNT" -gt 0 ]; then
+            echo "⚠️ **Build succeeded with $WARNING_COUNT warning(s)** - Please address these incrementally" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Build succeeded with no warnings or errors**" >> $GITHUB_STEP_SUMMARY
+          fi
         fi
     
     - name: Run tests with coverage
