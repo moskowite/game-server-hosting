@@ -1,8 +1,6 @@
-using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Entities;
 using GameServerHosting.Domain.Enums;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace GameServerHosting.Infrastructure.Services;
@@ -14,16 +12,16 @@ public class ServerStatusNotificationService : IServerStatusNotificationService
 {
     private readonly IEmailService _emailService;
     private readonly ILogger<ServerStatusNotificationService> _logger;
-    private readonly GameServerDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
 
     public ServerStatusNotificationService(
         IEmailService emailService,
         ILogger<ServerStatusNotificationService> logger,
-        GameServerDbContext context)
+        IUnitOfWork unitOfWork)
     {
         _emailService = emailService;
         _logger = logger;
-        _context = context;
+        _unitOfWork = unitOfWork;
     }
 
     /// <inheritdoc/>
@@ -38,7 +36,7 @@ public class ServerStatusNotificationService : IServerStatusNotificationService
             // Load user if not already loaded
             if (server.User == null)
             {
-                server.User = (await _context.Users.FindAsync(server.UserId))!;
+                server.User = (await _unitOfWork.Users.GetByIdAsync(server.UserId))!;
             }
 
             if (server.User == null || string.IsNullOrEmpty(server.User.Email))
@@ -77,7 +75,7 @@ public class ServerStatusNotificationService : IServerStatusNotificationService
             // Load user if not already loaded
             if (server.User == null)
             {
-                server.User = (await _context.Users.FindAsync(server.UserId))!;
+                server.User = (await _unitOfWork.Users.GetByIdAsync(server.UserId))!;
             }
 
             if (server.User == null || string.IsNullOrEmpty(server.User.Email))

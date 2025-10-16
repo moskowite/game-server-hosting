@@ -1,11 +1,10 @@
-using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Application.DTOs;
+using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Entities;
 using GameServerHosting.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace GameServerHosting.Api.Controllers;
 
@@ -18,16 +17,16 @@ namespace GameServerHosting.Api.Controllers;
 [Produces("application/json")]
 public class DashboardController : ControllerBase
 {
-    private readonly GameServerDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<DashboardController> _logger;
 
     public DashboardController(
-        GameServerDbContext context,
+        IUnitOfWork unitOfWork,
         UserManager<ApplicationUser> userManager,
         ILogger<DashboardController> logger)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _userManager = userManager;
         _logger = logger;
     }
@@ -76,9 +75,8 @@ public class DashboardController : ControllerBase
             };
 
             // Get active servers
-            var activeServers = await _context.GameServers
-                .Include(s => s.ServerType)
-                .Where(s => s.UserId == userGuid && s.Status != ServerStatus.Terminated)
+            var activeServers = (await _unitOfWork.GameServers.GetByUserIdAsync(userGuid))
+                .Where(s => s.Status != ServerStatus.Terminated)
                 .OrderByDescending(s => s.CreatedAt)
                 .Select(s => new GameServerDto
                 {
@@ -92,20 +90,16 @@ public class DashboardController : ControllerBase
                     ExpiresAt = s.ExpiresAt,
                     LastHeartbeatAt = s.LastHeartbeatAt,
                     CreatedAt = s.CreatedAt,
-                    ServerTypeName = s.ServerType.Name,
-                    GameName = s.ServerType.GameName,
-                    CpuCores = s.ServerType.CpuCores,
-                    RamMb = s.ServerType.RamMb,
-                    MaxPlayers = s.ServerType.MaxPlayers
+                    ServerTypeName = s.ServerType!.Name,
+                    GameName = s.ServerType!.GameName,
+                    CpuCores = s.ServerType!.CpuCores,
+                    RamMb = s.ServerType!.RamMb,
+                    MaxPlayers = s.ServerType!.MaxPlayers
                 })
-                .ToListAsync();
+                .ToList();
 
             // Get recent orders (last 10)
-            var recentOrders = await _context.Orders
-                .Include(o => o.GameServer)
-                    .ThenInclude(s => s!.ServerType)
-                .Include(o => o.ServerPlan)
-                .Where(o => o.UserId == userGuid)
+            var recentOrders = (await _unitOfWork.Orders.GetByUserIdAsync(userGuid))
                 .OrderByDescending(o => o.CreatedAt)
                 .Take(10)
                 .Select(o => new OrderDto
@@ -120,19 +114,17 @@ public class DashboardController : ControllerBase
                     PaymentDate = o.PaymentDate,
                     CreatedAt = o.CreatedAt,
                     ServerName = o.GameServer != null ? o.GameServer.ServerName : null,
-                    GameName = o.GameServer != null ? o.GameServer.ServerType.GameName : null,
+                    GameName = o.GameServer != null ? o.GameServer.ServerType!.GameName : null,
                     PlanName = o.ServerPlan != null ? o.ServerPlan.Name : null
                 })
-                .ToListAsync();
+                .ToList();
 
             // Calculate statistics
-            var allServers = await _context.GameServers
-                .Where(s => s.UserId == userGuid)
-                .ToListAsync();
+            var allServers = (await _unitOfWork.GameServers.GetByUserIdAsync(userGuid)).ToList();
 
-            var allOrders = await _context.Orders
-                .Where(o => o.UserId == userGuid && o.Status == OrderStatus.Completed)
-                .ToListAsync();
+            var allOrders = (await _unitOfWork.Orders.GetByUserIdAsync(userGuid))
+                .Where(o => o.Status == OrderStatus.Completed)
+                .ToList();
 
             var stats = new DashboardStats
             {
@@ -179,9 +171,7 @@ public class DashboardController : ControllerBase
 
             var userGuid = Guid.Parse(userId);
 
-            var servers = await _context.GameServers
-                .Include(s => s.ServerType)
-                .Where(s => s.UserId == userGuid)
+            var servers = (await _unitOfWork.GameServers.GetByUserIdAsync(userGuid))
                 .OrderByDescending(s => s.CreatedAt)
                 .Select(s => new GameServerDto
                 {
@@ -195,13 +185,13 @@ public class DashboardController : ControllerBase
                     ExpiresAt = s.ExpiresAt,
                     LastHeartbeatAt = s.LastHeartbeatAt,
                     CreatedAt = s.CreatedAt,
-                    ServerTypeName = s.ServerType.Name,
-                    GameName = s.ServerType.GameName,
-                    CpuCores = s.ServerType.CpuCores,
-                    RamMb = s.ServerType.RamMb,
-                    MaxPlayers = s.ServerType.MaxPlayers
+                    ServerTypeName = s.ServerType!.Name,
+                    GameName = s.ServerType!.GameName,
+                    CpuCores = s.ServerType!.CpuCores,
+                    RamMb = s.ServerType!.RamMb,
+                    MaxPlayers = s.ServerType!.MaxPlayers
                 })
-                .ToListAsync();
+                .ToList();
 
             return Ok(servers);
         }
@@ -231,11 +221,7 @@ public class DashboardController : ControllerBase
 
             var userGuid = Guid.Parse(userId);
 
-            var orders = await _context.Orders
-                .Include(o => o.GameServer)
-                    .ThenInclude(s => s!.ServerType)
-                .Include(o => o.ServerPlan)
-                .Where(o => o.UserId == userGuid)
+            var orders = (await _unitOfWork.Orders.GetByUserIdAsync(userGuid))
                 .OrderByDescending(o => o.CreatedAt)
                 .Select(o => new OrderDto
                 {
@@ -249,10 +235,10 @@ public class DashboardController : ControllerBase
                     PaymentDate = o.PaymentDate,
                     CreatedAt = o.CreatedAt,
                     ServerName = o.GameServer != null ? o.GameServer.ServerName : null,
-                    GameName = o.GameServer != null ? o.GameServer.ServerType.GameName : null,
+                    GameName = o.GameServer != null ? o.GameServer.ServerType!.GameName : null,
                     PlanName = o.ServerPlan != null ? o.ServerPlan.Name : null
                 })
-                .ToListAsync();
+                .ToList();
 
             return Ok(orders);
         }

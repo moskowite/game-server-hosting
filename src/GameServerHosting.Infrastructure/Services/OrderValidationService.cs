@@ -1,8 +1,6 @@
-using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Application.DTOs;
 using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
@@ -13,14 +11,14 @@ namespace GameServerHosting.Infrastructure.Services;
 /// </summary>
 public class OrderValidationService : IOrderValidationService
 {
-    private readonly GameServerDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<OrderValidationService> _logger;
 
     public OrderValidationService(
-        GameServerDbContext context,
+        IUnitOfWork unitOfWork,
         ILogger<OrderValidationService> logger)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -36,11 +34,7 @@ public class OrderValidationService : IOrderValidationService
         try
         {
             // Fetch cart items with server plan details
-            var cartItems = await _context.CartItems
-                .Where(ci => ci.UserId == userId)
-                .Include(ci => ci.ServerPlan)
-                    .ThenInclude(sp => sp.ServerType)
-                .ToListAsync(cancellationToken);
+            var cartItems = (await _unitOfWork.CartItems.GetWithDetailsAsync(userId)).ToList();
 
             // Check if cart is empty
             if (!cartItems.Any())
@@ -98,7 +92,7 @@ public class OrderValidationService : IOrderValidationService
             }
 
             // Save any price updates
-            await _context.SaveChangesAsync(cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             // Calculate total amount
             decimal totalAmount = cartItems.Sum(ci => ci.Price * ci.Quantity);
@@ -251,10 +245,8 @@ public class OrderValidationService : IOrderValidationService
             var serverPlanIds = cartItems.Select(ci => ci.ServerPlanId).Distinct().ToList();
 
             // Fetch all server plans to check availability
-            var serverPlans = await _context.ServerPlans
-                .Where(sp => serverPlanIds.Contains(sp.Id))
-                .Include(sp => sp.ServerType)
-                .ToListAsync(cancellationToken);
+            var allPlans = await _unitOfWork.ServerPlans.GetAllAsync();
+            var serverPlans = allPlans.Where(sp => serverPlanIds.Contains(sp.Id)).ToList();
 
             // Check if all server plans are still available
             foreach (var cartItem in cartItems)

@@ -3,7 +3,6 @@ using GameServerHosting.Application.DTOs;
 using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Entities;
 using GameServerHosting.Domain.Enums;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -14,20 +13,20 @@ namespace GameServerHosting.Infrastructure.Services;
 /// </summary>
 public class ServerProvisioningService : IServerProvisioningService
 {
-    private readonly GameServerDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ICloudProviderService _cloudProvider;
     private readonly ILogger<ServerProvisioningService> _logger;
     private readonly IEmailService _emailService;
     private readonly ProvisioningSettings _settings;
 
     public ServerProvisioningService(
-        GameServerDbContext context,
+        IUnitOfWork unitOfWork,
         ICloudProviderService cloudProvider,
         ILogger<ServerProvisioningService> logger,
         IEmailService emailService,
         IOptions<ProvisioningSettings> settings)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _cloudProvider = cloudProvider;
         _logger = logger;
         _emailService = emailService;
@@ -46,11 +45,7 @@ public class ServerProvisioningService : IServerProvisioningService
         }
 
         // Step 2: Load order with all related data
-        var order = await _context.Orders
-            .Include(o => o.User)
-            .Include(o => o.ServerPlan)
-                .ThenInclude(sp => sp!.ServerType)
-            .FirstOrDefaultAsync(o => o.Id == orderId);
+        var order = await _unitOfWork.Orders.GetWithDetailsAsync(orderId);
 
         if (order == null)
         {
@@ -73,13 +68,14 @@ public class ServerProvisioningService : IServerProvisioningService
             UpdatedAt = DateTime.UtcNow
         };
 
-        _context.GameServers.Add(gameServer);
+        await _unitOfWork.GameServers.AddAsync(gameServer);
         
         // Link order to server
         order.ServerId = gameServer.Id;
         order.UpdatedAt = DateTime.UtcNow;
+        _unitOfWork.Orders.Update(order);
         
-        await _context.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync();
 
         _logger.LogInformation(
             "Created GameServer {ServerId} for order {OrderId}",
@@ -110,8 +106,9 @@ public class ServerProvisioningService : IServerProvisioningService
             gameServer.ExpiresAt = CalculateExpirationDate(order.ServerPlan.DurationHours);
             
             gameServer.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.GameServers.Update(gameServer);
 
-            await _context.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation(
                 "Successfully provisioned server {ServerId} at {IpAddress}:{Port}",
@@ -133,7 +130,8 @@ public class ServerProvisioningService : IServerProvisioningService
             gameServer.Status = ServerStatus.Failed;
             gameServer.ProvisioningError = ex.Message;
             gameServer.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            _unitOfWork.GameServers.Update(gameServer);
+            await _unitOfWork.SaveChangesAsync();
 
             // Attempt rollback if configured
             if (_settings.AutoRollbackOnFailure)
@@ -153,10 +151,7 @@ public class ServerProvisioningService : IServerProvisioningService
         try
         {
             // Step 1: Load the server
-            var server = await _context.GameServers
-                .Include(s => s.ServerType)
-                .Include(s => s.User)
-                .FirstOrDefaultAsync(s => s.Id == serverId);
+            var server = await _unitOfWork.GameServers.GetByIdAsync(serverId);
 
             if (server == null)
             {
@@ -185,7 +180,8 @@ public class ServerProvisioningService : IServerProvisioningService
             server.Status = ServerStatus.Provisioning;
             server.ProvisioningStartedAt = DateTime.UtcNow;
             server.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            _unitOfWork.GameServers.Update(server);
+            await _unitOfWork.SaveChangesAsync();
 
             // Step 4: Create provision request with specified region
             var provisionRequest = new ServerProvisionRequest
@@ -210,7 +206,8 @@ public class ServerProvisioningService : IServerProvisioningService
                 server.Status = ServerStatus.Failed;
                 server.ProvisioningError = cloudResult.ErrorMessage;
                 server.UpdatedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
+                _unitOfWork.GameServers.Update(server);
+                await _unitOfWork.SaveChangesAsync();
 
                 return new ProvisioningResult
                 {
@@ -231,8 +228,9 @@ public class ServerProvisioningService : IServerProvisioningService
             server.HealthCheckStatus = "healthy";
             server.LastHeartbeatAt = DateTime.UtcNow;
             server.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.GameServers.Update(server);
 
-            await _context.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation(
                 "Successfully provisioned server {ServerId} at {IpAddress}:{Port}",
@@ -269,8 +267,7 @@ public class ServerProvisioningService : IServerProvisioningService
     /// <inheritdoc/>
     public async Task<ProvisioningStatus> GetProvisioningStatusAsync(Guid serverId)
     {
-        var server = await _context.GameServers
-            .FirstOrDefaultAsync(s => s.Id == serverId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(serverId);
 
         if (server == null)
         {
@@ -309,9 +306,7 @@ public class ServerProvisioningService : IServerProvisioningService
             "Rolling back provisioning for server {ServerId}: {Reason}",
             serverId, reason);
 
-        var server = await _context.GameServers
-            .Include(s => s.Orders)
-            .FirstOrDefaultAsync(s => s.Id == serverId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(serverId);
 
         if (server == null)
         {
@@ -345,14 +340,10 @@ public class ServerProvisioningService : IServerProvisioningService
             server.ProvisioningError = reason;
             server.UpdatedAt = DateTime.UtcNow;
 
-            // Step 3: Update related orders to failed status
-            foreach (var order in server.Orders.Where(o => o.Status == OrderStatus.Completed))
-            {
-                order.Status = OrderStatus.Failed;
-                order.UpdatedAt = DateTime.UtcNow;
-            }
+            // Step 3: Update server status
+            _unitOfWork.GameServers.Update(server);
 
-            await _context.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation(
                 "Successfully rolled back server {ServerId}",
@@ -378,11 +369,7 @@ public class ServerProvisioningService : IServerProvisioningService
     /// <inheritdoc/>
     public async Task<bool> ValidateProvisioningAsync(Guid orderId)
     {
-        var order = await _context.Orders
-            .Include(o => o.User)
-            .Include(o => o.ServerPlan)
-            .Include(o => o.Payments)
-            .FirstOrDefaultAsync(o => o.Id == orderId);
+        var order = await _unitOfWork.Orders.GetWithDetailsAsync(orderId);
 
         if (order == null)
         {
@@ -529,7 +516,7 @@ public class ServerProvisioningService : IServerProvisioningService
     {
         try
         {
-            var user = await _context.Users.FindAsync(server.UserId);
+            var user = await _unitOfWork.Users.GetByIdAsync(server.UserId);
             if (user == null || string.IsNullOrEmpty(user.Email))
             {
                 return;
@@ -570,7 +557,7 @@ public class ServerProvisioningService : IServerProvisioningService
     {
         try
         {
-            var user = await _context.Users.FindAsync(server.UserId);
+            var user = await _unitOfWork.Users.GetByIdAsync(server.UserId);
             if (user == null || string.IsNullOrEmpty(user.Email))
             {
                 return;

@@ -1,11 +1,10 @@
-using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Application.DTOs;
+using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Entities;
 using GameServerHosting.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace GameServerHosting.Api.Controllers;
 
@@ -17,16 +16,16 @@ namespace GameServerHosting.Api.Controllers;
 [Produces("application/json")]
 public class ServerTypesController : ControllerBase
 {
-    private readonly GameServerDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<ServerTypesController> _logger;
 
     public ServerTypesController(
-        GameServerDbContext context,
+        IUnitOfWork unitOfWork,
         UserManager<ApplicationUser> userManager,
         ILogger<ServerTypesController> logger)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _userManager = userManager;
         _logger = logger;
     }
@@ -45,20 +44,20 @@ public class ServerTypesController : ControllerBase
     {
         try
         {
-            var query = _context.ServerTypes.AsQueryable();
+            var allServerTypes = await _unitOfWork.ServerTypes.GetAllAsync();
 
             // Apply filters
             if (isActive.HasValue)
             {
-                query = query.Where(st => st.IsActive == isActive.Value);
+                allServerTypes = allServerTypes.Where(st => st.IsActive == isActive.Value);
             }
 
             if (!string.IsNullOrWhiteSpace(gameName))
             {
-                query = query.Where(st => st.GameName.ToLower() == gameName.ToLower());
+                allServerTypes = allServerTypes.Where(st => st.GameName.ToLower() == gameName.ToLower());
             }
 
-            var serverTypes = await query
+            var serverTypes = allServerTypes
                 .OrderBy(st => st.GameName)
                 .ThenBy(st => st.Name)
                 .Select(st => new ServerTypeDto
@@ -79,7 +78,7 @@ public class ServerTypesController : ControllerBase
                     CreatedAt = st.CreatedAt,
                     UpdatedAt = st.UpdatedAt
                 })
-                .ToListAsync();
+                .ToList();
 
             _logger.LogInformation("Retrieved {Count} server types", serverTypes.Count);
             return Ok(serverTypes);
@@ -103,33 +102,31 @@ public class ServerTypesController : ControllerBase
     {
         try
         {
-            var serverType = await _context.ServerTypes
-                .Where(st => st.Id == id)
-                .Select(st => new ServerTypeDto
-                {
-                    Id = st.Id,
-                    Name = st.Name,
-                    GameName = st.GameName,
-                    Description = st.Description,
-                    CpuCores = st.CpuCores,
-                    RamMb = st.RamMb,
-                    DiskGb = st.DiskGb,
-                    MaxPlayers = st.MaxPlayers,
-                    HourlyPrice = st.HourlyPrice,
-                    MonthlyPrice = st.MonthlyPrice,
-                    DockerImage = st.DockerImage,
-                    DefaultConfig = st.DefaultConfig,
-                    IsActive = st.IsActive,
-                    CreatedAt = st.CreatedAt,
-                    UpdatedAt = st.UpdatedAt
-                })
-                .FirstOrDefaultAsync();
-
-            if (serverType == null)
+            var serverTypeEntity = await _unitOfWork.ServerTypes.GetByIdAsync(id);
+            if (serverTypeEntity == null)
             {
                 _logger.LogWarning("Server type not found: {Id}", id);
                 return NotFound(new { message = "Server type not found" });
             }
+
+            var serverType = new ServerTypeDto
+            {
+                Id = serverTypeEntity.Id,
+                Name = serverTypeEntity.Name,
+                GameName = serverTypeEntity.GameName,
+                Description = serverTypeEntity.Description,
+                CpuCores = serverTypeEntity.CpuCores,
+                RamMb = serverTypeEntity.RamMb,
+                DiskGb = serverTypeEntity.DiskGb,
+                MaxPlayers = serverTypeEntity.MaxPlayers,
+                HourlyPrice = serverTypeEntity.HourlyPrice,
+                MonthlyPrice = serverTypeEntity.MonthlyPrice,
+                DockerImage = serverTypeEntity.DockerImage,
+                DefaultConfig = serverTypeEntity.DefaultConfig,
+                IsActive = serverTypeEntity.IsActive,
+                CreatedAt = serverTypeEntity.CreatedAt,
+                UpdatedAt = serverTypeEntity.UpdatedAt
+            };
 
             _logger.LogInformation("Retrieved server type: {Id}", id);
             return Ok(serverType);
@@ -172,8 +169,8 @@ public class ServerTypesController : ControllerBase
             }
 
             // Check if server type with same name already exists
-            var existingServerType = await _context.ServerTypes
-                .FirstOrDefaultAsync(st => st.Name.ToLower() == request.Name.ToLower());
+            var existingServerType = (await _unitOfWork.ServerTypes.GetAllAsync())
+                .FirstOrDefault(st => st.Name.ToLower() == request.Name.ToLower());
 
             if (existingServerType != null)
             {
@@ -200,8 +197,8 @@ public class ServerTypesController : ControllerBase
                 UpdatedAt = DateTime.UtcNow
             };
 
-            _context.ServerTypes.Add(serverType);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.ServerTypes.AddAsync(serverType);
+            await _unitOfWork.SaveChangesAsync();
 
             var dto = new ServerTypeDto
             {
@@ -264,7 +261,7 @@ public class ServerTypesController : ControllerBase
                 return StatusCode(403, new { message = "Only administrators can update server types" });
             }
 
-            var serverType = await _context.ServerTypes.FindAsync(id);
+            var serverType = await _unitOfWork.ServerTypes.GetByIdAsync(id);
             if (serverType == null)
             {
                 _logger.LogWarning("Server type not found for update: {Id}", id);
@@ -272,8 +269,8 @@ public class ServerTypesController : ControllerBase
             }
 
             // Check if another server type with same name already exists
-            var existingServerType = await _context.ServerTypes
-                .FirstOrDefaultAsync(st => st.Name.ToLower() == request.Name.ToLower() && st.Id != id);
+            var existingServerType = (await _unitOfWork.ServerTypes.GetAllAsync())
+                .FirstOrDefault(st => st.Name.ToLower() == request.Name.ToLower() && st.Id != id);
 
             if (existingServerType != null)
             {
@@ -295,8 +292,9 @@ public class ServerTypesController : ControllerBase
             serverType.DefaultConfig = request.DefaultConfig;
             serverType.IsActive = request.IsActive;
             serverType.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.ServerTypes.Update(serverType);
 
-            await _context.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
 
             var dto = new ServerTypeDto
             {
@@ -358,10 +356,7 @@ public class ServerTypesController : ControllerBase
                 return StatusCode(403, new { message = "Only administrators can delete server types" });
             }
 
-            var serverType = await _context.ServerTypes
-                .Include(st => st.GameServers)
-                .Include(st => st.ServerPlans)
-                .FirstOrDefaultAsync(st => st.Id == id);
+            var serverType = await _unitOfWork.ServerTypes.GetByIdAsync(id);
 
             if (serverType == null)
             {
@@ -369,15 +364,20 @@ public class ServerTypesController : ControllerBase
                 return NotFound(new { message = "Server type not found" });
             }
 
-            // Check if server type is in use
-            if (serverType.GameServers.Any() || serverType.ServerPlans.Any())
+            // Check if server type is in use by checking GameServers and ServerPlans
+            var gameServersUsingType = (await _unitOfWork.GameServers.GetAllAsync())
+                .Where(gs => gs.ServerTypeId == id).Any();
+            var serverPlansUsingType = (await _unitOfWork.ServerPlans.GetAllAsync())
+                .Where(sp => sp.ServerTypeId == id).Any();
+
+            if (gameServersUsingType || serverPlansUsingType)
             {
                 _logger.LogWarning("Cannot delete server type {Id} - it is in use", id);
                 return BadRequest(new { message = "Cannot delete server type that is in use by game servers or server plans" });
             }
 
-            _context.ServerTypes.Remove(serverType);
-            await _context.SaveChangesAsync();
+            _unitOfWork.ServerTypes.Remove(serverType);
+            await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("Server type deleted: {Id} by user {UserId}", id, userId);
             return Ok(new { message = "Server type deleted successfully" });

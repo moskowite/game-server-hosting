@@ -1,10 +1,9 @@
-using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Application.DTOs;
+using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace GameServerHosting.Api.Controllers;
 
@@ -17,16 +16,16 @@ namespace GameServerHosting.Api.Controllers;
 [Authorize]
 public class CartController : ControllerBase
 {
-    private readonly GameServerDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<CartController> _logger;
 
     public CartController(
-        GameServerDbContext context,
+        IUnitOfWork unitOfWork,
         UserManager<ApplicationUser> userManager,
         ILogger<CartController> logger)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _userManager = userManager;
         _logger = logger;
     }
@@ -51,10 +50,7 @@ public class CartController : ControllerBase
 
             var userGuid = Guid.Parse(userId);
 
-            var cartItems = await _context.CartItems
-                .Where(ci => ci.UserId == userGuid)
-                .Include(ci => ci.ServerPlan)
-                    .ThenInclude(sp => sp.ServerType)
+            var cartItems = (await _unitOfWork.CartItems.GetWithDetailsAsync(userGuid))
                 .OrderBy(ci => ci.CreatedAt)
                 .Select(ci => new CartItemDto
                 {
@@ -68,7 +64,7 @@ public class CartController : ControllerBase
                     UpdatedAt = ci.UpdatedAt,
                     ServerPlan = new ServerPlanDto
                     {
-                        Id = ci.ServerPlan.Id,
+                        Id = ci.ServerPlan!.Id,
                         ServerTypeId = ci.ServerPlan.ServerTypeId,
                         Name = ci.ServerPlan.Name,
                         BillingCycle = ci.ServerPlan.BillingCycle,
@@ -83,7 +79,7 @@ public class CartController : ControllerBase
                         UpdatedAt = ci.ServerPlan.UpdatedAt
                     }
                 })
-                .ToListAsync();
+                .ToList();
 
             _logger.LogInformation("Retrieved {Count} cart items for user {UserId}", cartItems.Count, userId);
             return Ok(cartItems);
@@ -119,7 +115,7 @@ public class CartController : ControllerBase
             var userGuid = Guid.Parse(userId);
 
             // Check if server plan exists and is active
-            var serverPlan = await _context.ServerPlans.FindAsync(request.ServerPlanId);
+            var serverPlan = await _unitOfWork.ServerPlans.GetByIdAsync(request.ServerPlanId);
             if (serverPlan == null)
             {
                 _logger.LogWarning("Server plan not found: {ServerPlanId}", request.ServerPlanId);
@@ -133,8 +129,8 @@ public class CartController : ControllerBase
             }
 
             // Check if item already exists in cart
-            var existingCartItem = await _context.CartItems
-                .FirstOrDefaultAsync(ci => ci.UserId == userGuid && ci.ServerPlanId == request.ServerPlanId);
+            var existingCartItem = await _unitOfWork.CartItems
+                .GetByUserAndPlanAsync(userGuid, request.ServerPlanId);
 
             CartItem cartItem;
 
@@ -144,6 +140,7 @@ public class CartController : ControllerBase
                 existingCartItem.Quantity += request.Quantity;
                 existingCartItem.Price = serverPlan.Price; // Update price to current price
                 existingCartItem.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.CartItems.Update(existingCartItem);
                 cartItem = existingCartItem;
                 _logger.LogInformation("Updated cart item quantity for user {UserId}, plan {PlanId}", userId, request.ServerPlanId);
             }
@@ -161,16 +158,16 @@ public class CartController : ControllerBase
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
-                _context.CartItems.Add(cartItem);
+                await _unitOfWork.CartItems.AddAsync(cartItem);
                 _logger.LogInformation("Added new cart item for user {UserId}, plan {PlanId}", userId, request.ServerPlanId);
             }
 
-            await _context.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
 
             // Reload with server plan details
-            var savedCartItem = await _context.CartItems
-                .Include(ci => ci.ServerPlan)
-                .FirstAsync(ci => ci.Id == cartItem.Id);
+            var savedCartItemDetails = (await _unitOfWork.CartItems.GetWithDetailsAsync(userGuid))
+                .FirstOrDefault(ci => ci.Id == cartItem.Id);
+            var savedCartItem = savedCartItemDetails ?? cartItem;
 
             var dto = new CartItemDto
             {
@@ -182,7 +179,7 @@ public class CartController : ControllerBase
                 Currency = savedCartItem.Currency,
                 CreatedAt = savedCartItem.CreatedAt,
                 UpdatedAt = savedCartItem.UpdatedAt,
-                ServerPlan = new ServerPlanDto
+                ServerPlan = savedCartItem.ServerPlan != null ? new ServerPlanDto
                 {
                     Id = savedCartItem.ServerPlan.Id,
                     ServerTypeId = savedCartItem.ServerPlan.ServerTypeId,
@@ -197,7 +194,7 @@ public class CartController : ControllerBase
                     Description = savedCartItem.ServerPlan.Description,
                     CreatedAt = savedCartItem.ServerPlan.CreatedAt,
                     UpdatedAt = savedCartItem.ServerPlan.UpdatedAt
-                }
+                } : null
             };
 
             return Ok(dto);
@@ -234,9 +231,9 @@ public class CartController : ControllerBase
 
             var userGuid = Guid.Parse(userId);
 
-            var cartItem = await _context.CartItems
-                .Include(ci => ci.ServerPlan)
-                .FirstOrDefaultAsync(ci => ci.Id == itemId);
+            var cartItemWithDetails = (await _unitOfWork.CartItems.GetWithDetailsAsync(userGuid))
+                .FirstOrDefault(ci => ci.Id == itemId);
+            var cartItem = cartItemWithDetails ?? await _unitOfWork.CartItems.GetByIdAsync(itemId);
 
             if (cartItem == null)
             {
@@ -255,8 +252,9 @@ public class CartController : ControllerBase
             // Update quantity
             cartItem.Quantity = request.Quantity;
             cartItem.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.CartItems.Update(cartItem);
 
-            await _context.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
 
             var dto = new CartItemDto
             {
@@ -319,7 +317,7 @@ public class CartController : ControllerBase
 
             var userGuid = Guid.Parse(userId);
 
-            var cartItem = await _context.CartItems.FindAsync(itemId);
+            var cartItem = await _unitOfWork.CartItems.GetByIdAsync(itemId);
             if (cartItem == null)
             {
                 _logger.LogWarning("Cart item not found for removal: {ItemId}", itemId);
@@ -334,8 +332,8 @@ public class CartController : ControllerBase
                 return StatusCode(403, new { message = "You don't have permission to remove this cart item" });
             }
 
-            _context.CartItems.Remove(cartItem);
-            await _context.SaveChangesAsync();
+            _unitOfWork.CartItems.Remove(cartItem);
+            await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("Removed cart item {ItemId} for user {UserId}", itemId, userId);
             return Ok(new { message = "Item removed from cart successfully" });
@@ -367,18 +365,11 @@ public class CartController : ControllerBase
 
             var userGuid = Guid.Parse(userId);
 
-            var cartItems = await _context.CartItems
-                .Where(ci => ci.UserId == userGuid)
-                .ToListAsync();
+            await _unitOfWork.CartItems.ClearCartAsync(userGuid);
+            
+            _logger.LogInformation("Cleared cart items for user {UserId}", userId);
 
-            if (cartItems.Any())
-            {
-                _context.CartItems.RemoveRange(cartItems);
-                await _context.SaveChangesAsync();
-                _logger.LogInformation("Cleared {Count} cart items for user {UserId}", cartItems.Count, userId);
-            }
-
-            return Ok(new { message = "Cart cleared successfully", itemsRemoved = cartItems.Count });
+            return Ok(new { message = "Cart cleared successfully" });
         }
         catch (Exception ex)
         {

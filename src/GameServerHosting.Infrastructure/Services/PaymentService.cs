@@ -7,7 +7,6 @@ using Microsoft.Extensions.Options;
 using Stripe;
 using Stripe.Checkout;
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 
 namespace GameServerHosting.Infrastructure.Services;
 
@@ -21,22 +20,19 @@ public class PaymentService : IPaymentService
     private readonly ILogger<PaymentService> _logger;
     private readonly IEmailService _emailService;
     private readonly IJobSchedulerService _jobScheduler;
-    private readonly GameServerDbContext _context;
 
     public PaymentService(
         IOptions<StripeSettings> stripeSettings,
         IUnitOfWork unitOfWork,
         ILogger<PaymentService> logger,
         IEmailService emailService,
-        IJobSchedulerService jobScheduler,
-        GameServerDbContext context)
+        IJobSchedulerService jobScheduler)
     {
         _stripeSettings = stripeSettings.Value;
         _unitOfWork = unitOfWork;
         _logger = logger;
         _emailService = emailService;
         _jobScheduler = jobScheduler;
-        _context = context;
 
         // Set the Stripe API key
         StripeConfiguration.ApiKey = _stripeSettings.SecretKey;
@@ -839,9 +835,7 @@ public class PaymentService : IPaymentService
         try
         {
             // Get the server plan from the database
-            var serverPlan = await _context.ServerPlans
-                .Include(sp => sp.ServerType)
-                .FirstOrDefaultAsync(sp => sp.Id == serverPlanId);
+            var serverPlan = await _unitOfWork.ServerPlans.GetWithServerTypeAsync(serverPlanId);
 
             if (serverPlan == null)
             {

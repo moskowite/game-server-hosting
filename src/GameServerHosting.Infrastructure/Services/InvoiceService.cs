@@ -1,6 +1,4 @@
 using GameServerHosting.Application.Interfaces;
-using GameServerHosting.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using GameServerHosting.Domain.Enums;
@@ -12,14 +10,14 @@ namespace GameServerHosting.Infrastructure.Services;
 /// </summary>
 public class InvoiceService : IInvoiceService
 {
-    private readonly GameServerDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<InvoiceService> _logger;
 
     public InvoiceService(
-        GameServerDbContext context,
+        IUnitOfWork unitOfWork,
         ILogger<InvoiceService> logger)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -51,13 +49,15 @@ public class InvoiceService : IInvoiceService
                 throw new ArgumentException("At least one order ID is required", nameof(orderIds));
             }
 
-            var orders = await _context.Orders
-                .Include(o => o.User)
-                .Include(o => o.ServerPlan)
-                    .ThenInclude(sp => sp!.ServerType)
-                .Include(o => o.Payments)
-                .Where(o => orderIds.Contains(o.Id))
-                .ToListAsync();
+            var orders = new List<GameServerHosting.Domain.Entities.Order>();
+            foreach (var orderId in orderIds)
+            {
+                var order = await _unitOfWork.Orders.GetWithDetailsAsync(orderId);
+                if (order != null)
+                {
+                    orders.Add(order);
+                }
+            }
 
             if (orders.Count == 0)
             {
@@ -79,12 +79,7 @@ public class InvoiceService : IInvoiceService
     {
         try
         {
-            var order = await _context.Orders
-                .Include(o => o.User)
-                .Include(o => o.ServerPlan)
-                    .ThenInclude(sp => sp!.ServerType)
-                .Include(o => o.Payments)
-                .FirstOrDefaultAsync(o => o.Id == orderId);
+            var order = await _unitOfWork.Orders.GetWithDetailsAsync(orderId);
 
             if (order == null)
             {
