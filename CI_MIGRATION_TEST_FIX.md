@@ -1,7 +1,7 @@
 # CI Migration Test Fix
 
 **Issue**: Database Migration Test job failing in CI  
-**Job IDs**: 52880153418 (first failure), 52880608156 (second failure)  
+**Job IDs**: 52880153418 (first failure), 52880608156 (second failure), 52881518011 (third failure)  
 **Date**: 2025-10-16
 
 ## Problem Analysis
@@ -46,6 +46,21 @@ Npgsql.PostgresException (0x80004005): 42883: function uuid_generate_v4() does n
 The PostgreSQL test database didn't have the `uuid-ossp` extension enabled. This extension provides the `uuid_generate_v4()` function that the migrations use for generating default UUID values in the database schema.
 
 In local development, developers likely enabled this extension manually or it was part of their existing database setup. The CI environment uses a fresh PostgreSQL container for each test run, which doesn't have this extension enabled by default.
+
+### Third Issue (Job 52881518011)
+
+After fixing the UUID extension issue, the CI failed once more with:
+
+```
+/home/runner/work/_temp/cecd0588-9859-4338-8245-afa298fe0cfb.sh: line 12: [: 0
+0: integer expression expected
+```
+
+#### Root Cause #3
+
+The database verification step was using `grep -c "| public |" tables.txt` to count tables from the `\dt` psql command output. However, this parsing approach was unreliable and produced a malformed result ("0\n0" instead of a single number), causing the integer comparison to fail.
+
+The migrations had actually succeeded and created 7 tables, but the verification logic had a bug that prevented proper validation.
 
 ## Solution
 
@@ -99,6 +114,35 @@ Added a new step before applying migrations to enable the PostgreSQL UUID extens
 - The extension must be enabled before migrations can run
 - Fresh CI database containers don't have this extension by default
 
+### Fix #4: Improve Database Verification Logic
+
+**File**: `.github/workflows/ci.yml`
+
+Replaced the unreliable grep-based table counting with direct SQL queries:
+
+```yaml
+- name: Verify database schema
+  run: |
+    echo "" >> $GITHUB_STEP_SUMMARY
+    echo "### Database Tables Created" >> $GITHUB_STEP_SUMMARY
+    
+    # Count tables using SQL query (more reliable than parsing psql output)
+    TABLE_COUNT=$(docker run --rm --network host postgres:16-alpine \
+      psql "postgresql://postgres:postgres@localhost:5432/gameserverhosting_test" \
+      -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE';")
+    
+    # Trim whitespace from the result
+    TABLE_COUNT=$(echo "$TABLE_COUNT" | tr -d ' \n\r')
+    
+    # ... rest of verification logic
+```
+
+**Why this is better:**
+- Uses SQL's `information_schema` to count tables directly
+- More reliable than parsing human-readable psql output
+- Handles whitespace properly with `tr -d ' \n\r'`
+- Also lists individual table names for better visibility in CI summary
+
 ## Changes Made
 
 ### Modified Files
@@ -113,6 +157,8 @@ Added a new step before applying migrations to enable the PostgreSQL UUID extens
 3. **.github/workflows/ci.yml**
    - ✅ Added step to enable PostgreSQL `uuid-ossp` extension before migrations
    - ✅ Ensures migrations can use `uuid_generate_v4()` function
+   - ✅ Improved database verification to use SQL queries instead of parsing psql output
+   - ✅ Added table name listing for better CI visibility
 
 ## Expected Results
 
@@ -145,6 +191,20 @@ To prevent similar issues:
 - [Database Migrations Guide](docs/development/database-migrations.md)
 - [EF Core Design Package Documentation](https://docs.microsoft.com/en-us/ef/core/cli/dotnet)
 - [Migration Automation Summary](MIGRATION_AUTOMATION_SUMMARY.md)
+
+## 📊 Summary
+
+**Three issues resolved:**
+1. ✅ **First Issue**: Missing `Microsoft.EntityFrameworkCore.Design` in API project
+2. ✅ **Second Issue**: Missing `uuid-ossp` PostgreSQL extension in CI database
+3. ✅ **Third Issue**: Unreliable table counting in verification step causing integer comparison failure
+
+All issues are now fixed with robust solutions:
+- Package references corrected
+- PostgreSQL extension automatically enabled
+- Verification using direct SQL queries instead of output parsing
+
+The Database Migration Test job should now pass completely on the next CI run!
 
 ## Testing
 

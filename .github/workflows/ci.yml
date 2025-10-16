@@ -88,17 +88,27 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Database Tables Created" >> $GITHUB_STEP_SUMMARY
         
-        # List all tables in the database
+        # Count tables using SQL query (more reliable than parsing psql output)
+        TABLE_COUNT=$(docker run --rm --network host postgres:16-alpine \
+          psql "postgresql://postgres:postgres@localhost:5432/gameserverhosting_test" \
+          -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE';")
+        
+        # Trim whitespace from the result
+        TABLE_COUNT=$(echo "$TABLE_COUNT" | tr -d ' \n\r')
+        
+        echo "- **Total Tables**: $TABLE_COUNT" >> $GITHUB_STEP_SUMMARY
+        
+        # List table names for visibility
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Tables:**" >> $GITHUB_STEP_SUMMARY
         docker run --rm --network host postgres:16-alpine \
           psql "postgresql://postgres:postgres@localhost:5432/gameserverhosting_test" \
-          -c "\dt" | tee tables.txt
-        
-        TABLE_COUNT=$(grep -c "| public |" tables.txt || echo "0")
-        echo "- **Total Tables**: $TABLE_COUNT" >> $GITHUB_STEP_SUMMARY
+          -t -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name;" | \
+          sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
         
         if [ "$TABLE_COUNT" -gt 0 ]; then
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ **Database schema created successfully**" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Database schema created successfully with $TABLE_COUNT tables**" >> $GITHUB_STEP_SUMMARY
         else
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "❌ **No tables found in database**" >> $GITHUB_STEP_SUMMARY
