@@ -9,12 +9,12 @@ public enum OrderType
     /// New server purchase
     /// </summary>
     NewServer,
-    
+
     /// <summary>
     /// Server subscription renewal
     /// </summary>
     Renewal,
-    
+
     /// <summary>
     /// Server plan upgrade
     /// </summary>

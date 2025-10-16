@@ -1,4 +1,6 @@
+using GameServerHosting.Application.DTOs;
 using GameServerHosting.Client.Models;
+using GameServerHosting.Domain.Enums;
 using System.Text.Json;
 
 namespace GameServerHosting.Client.Services;

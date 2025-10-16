@@ -1,3 +1,5 @@
+using GameServerHosting.Domain.Enums;
+
 namespace GameServerHosting.Client.Models;
 
 /// <summary>

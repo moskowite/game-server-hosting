@@ -19,8 +19,8 @@ public interface IPaymentService
     /// <param name="metadata">Additional metadata for the payment</param>
     /// <returns>The created payment intent</returns>
     Task<PaymentIntent> CreatePaymentIntentAsync(
-        Guid userId, 
-        long amount, 
+        Guid userId,
+        long amount,
         string currency,
         Guid? orderId = null,
         Dictionary<string, string>? metadata = null);
