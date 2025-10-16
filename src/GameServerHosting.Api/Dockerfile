@@ -9,6 +9,7 @@ COPY src/GameServerHosting.Client/GameServerHosting.Client.csproj src/GameServer
 COPY src/GameServerHosting.Domain/GameServerHosting.Domain.csproj src/GameServerHosting.Domain/
 COPY src/GameServerHosting.Application/GameServerHosting.Application.csproj src/GameServerHosting.Application/
 COPY src/GameServerHosting.Infrastructure/GameServerHosting.Infrastructure.csproj src/GameServerHosting.Infrastructure/
+COPY src/GameServerHosting.Shared/GameServerHosting.Shared.csproj src/GameServerHosting.Shared/
 
 # Restore dependencies
 RUN dotnet restore src/GameServerHosting.Api/GameServerHosting.Api.csproj
