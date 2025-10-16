@@ -1,7 +1,7 @@
 # CI Migration Test Fix
 
 **Issue**: Database Migration Test job failing in CI  
-**Job IDs**: 52880153418 (first failure), 52880608156 (second failure), 52881518011 (third failure)  
+**Job IDs**: 52880153418, 52880608156, 52881518011, 52881976967  
 **Date**: 2025-10-16
 
 ## Problem Analysis
@@ -61,6 +61,20 @@ After fixing the UUID extension issue, the CI failed once more with:
 The database verification step was using `grep -c "| public |" tables.txt` to count tables from the `\dt` psql command output. However, this parsing approach was unreliable and produced a malformed result ("0\n0" instead of a single number), causing the integer comparison to fail.
 
 The migrations had actually succeeded and created 7 tables, but the verification logic had a bug that prevented proper validation.
+
+### Fourth Issue (Job 52881976967)
+
+After fixing the verification logic, the CI failed in the rollback test step with:
+
+```
+System.InvalidOperationException: The migration '[06:25:48 INF] Starting Game Server Hosting API' was not found.
+```
+
+#### Root Cause #4
+
+The migration rollback test was parsing the output of `dotnet ef migrations list` to extract migration names. However, the command builds and starts the application, which outputs log messages (from Serilog) that get mixed into the migration list output.
+
+The existing filters (`grep -v "Build started" | grep -v "Build succeeded"`) only removed build messages, not application logs like `[06:25:48 INF] Starting Game Server Hosting API`. The script then tried to use this log message as a migration name, causing the rollback command to fail.
 
 ## Solution
 
@@ -143,6 +157,31 @@ Replaced the unreliable grep-based table counting with direct SQL queries:
 - Handles whitespace properly with `tr -d ' \n\r'`
 - Also lists individual table names for better visibility in CI summary
 
+### Fix #5: Robust Migration List Parsing
+
+**File**: `.github/workflows/ci.yml`
+
+Fixed the migration rollback test to properly filter migration names:
+
+```yaml
+# Get the list of migrations, filtering out build messages and log output
+# Migration names follow the pattern: timestamp_MigrationName (e.g., 20251013232951_InitialCreate)
+MIGRATIONS=$(dotnet ef migrations list \
+  --project . \
+  --startup-project ../GameServerHosting.Api \
+  --context GameServerDbContext \
+  --no-connect 2>&1 | \
+  grep -E '^[0-9]{14}_' | \
+  tr -d ' \r')
+```
+
+**Why this is better:**
+- Uses regex pattern `^[0-9]{14}_` to match only actual migration names (14-digit timestamp + underscore)
+- Captures both stdout and stderr with `2>&1` then filters
+- Removes all whitespace and carriage returns with `tr -d ' \r'`
+- Ignores all build messages, log output, and other noise
+- Only captures lines that look like valid EF Core migration names
+
 ## Changes Made
 
 ### Modified Files
@@ -159,6 +198,7 @@ Replaced the unreliable grep-based table counting with direct SQL queries:
    - ✅ Ensures migrations can use `uuid_generate_v4()` function
    - ✅ Improved database verification to use SQL queries instead of parsing psql output
    - ✅ Added table name listing for better CI visibility
+   - ✅ Fixed migration list parsing to filter out application logs using regex pattern matching
 
 ## Expected Results
 
@@ -194,15 +234,17 @@ To prevent similar issues:
 
 ## 📊 Summary
 
-**Three issues resolved:**
-1. ✅ **First Issue**: Missing `Microsoft.EntityFrameworkCore.Design` in API project
-2. ✅ **Second Issue**: Missing `uuid-ossp` PostgreSQL extension in CI database
-3. ✅ **Third Issue**: Unreliable table counting in verification step causing integer comparison failure
+**Four issues resolved:**
+1. ✅ **Issue #1**: Missing `Microsoft.EntityFrameworkCore.Design` package in API project
+2. ✅ **Issue #2**: Missing `uuid-ossp` PostgreSQL extension in CI database
+3. ✅ **Issue #3**: Unreliable table counting causing verification failure
+4. ✅ **Issue #4**: Migration list parsing picking up application logs as migration names
 
 All issues are now fixed with robust solutions:
 - Package references corrected
 - PostgreSQL extension automatically enabled
-- Verification using direct SQL queries instead of output parsing
+- Database verification using direct SQL queries
+- Migration parsing using regex pattern matching to filter out noise
 
 The Database Migration Test job should now pass completely on the next CI run!
 

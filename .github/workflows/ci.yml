@@ -122,21 +122,24 @@ jobs:
         
         cd src/GameServerHosting.Infrastructure
         
-        # Get the list of migrations
+        # Get the list of migrations, filtering out build messages and log output
+        # Migration names follow the pattern: timestamp_MigrationName (e.g., 20251013232951_InitialCreate)
         MIGRATIONS=$(dotnet ef migrations list \
           --project . \
           --startup-project ../GameServerHosting.Api \
           --context GameServerDbContext \
-          --no-connect)
+          --no-connect 2>&1 | \
+          grep -E '^[0-9]{14}_' | \
+          tr -d ' \r')
         
         # Count migrations
-        MIGRATION_COUNT=$(echo "$MIGRATIONS" | grep -v "Build started" | grep -v "Build succeeded" | wc -l)
+        MIGRATION_COUNT=$(echo "$MIGRATIONS" | grep -c '^' || echo "0")
         
         echo "- **Total Migrations**: $MIGRATION_COUNT" >> $GITHUB_STEP_SUMMARY
         
         # If we have more than one migration, test rollback to the first one
         if [ "$MIGRATION_COUNT" -gt 1 ]; then
-          FIRST_MIGRATION=$(echo "$MIGRATIONS" | grep -v "Build started" | grep -v "Build succeeded" | head -1 | xargs)
+          FIRST_MIGRATION=$(echo "$MIGRATIONS" | head -1)
           echo "- **Rolling back to**: $FIRST_MIGRATION" >> $GITHUB_STEP_SUMMARY
           
           dotnet ef database update "$FIRST_MIGRATION" \
