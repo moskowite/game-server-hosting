@@ -46,6 +46,16 @@ Default connection string:
 }
 ```
 
+**Important:** Enable the UUID extension before running migrations:
+```sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+```
+
+Or via psql:
+```bash
+psql -U postgres -d gameserverhosting_dev -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+```
+
 ## Quick Start
 
 ### Linux/macOS (Using Makefile)
@@ -355,6 +365,22 @@ make db.add-migration NAME=UpdateSchema
 # Use specific names
 make db.add-migration NAME=AddServerTypeDescription
 ```
+
+#### Issue: "function uuid_generate_v4() does not exist"
+
+**Solution**: The PostgreSQL database needs the `uuid-ossp` extension:
+
+```bash
+# Using Docker
+docker compose exec postgres psql -U postgres -d gameserverhosting_dev \
+  -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+
+# Or using psql directly
+psql -U postgres -d gameserverhosting_dev \
+  -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+```
+
+Note: When using `make docker.db.up`, this extension should be enabled automatically on first migration run. If it's not, run the command above manually.
 
 #### Issue: Can't connect to database in Docker
 
