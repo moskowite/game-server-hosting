@@ -1,5 +1,5 @@
 # Stage 1: Build Blazor WASM
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build
 WORKDIR /src
 
 # Copy solution file and project files for layer caching

@@ -1,0 +1,34 @@
+# Trivy Ignore File for Known Base Image Vulnerabilities
+# https://aquasecurity.github.io/trivy/latest/docs/configuration/filtering/
+
+# CVE-2023-45853: zlib integer overflow
+# Severity: CRITICAL
+# Status: will_not_fix by Debian
+# Reason: This vulnerability is in the base Debian image's zlib package.
+#         Debian security team has marked this as will_not_fix for Bookworm.
+#         The vulnerability requires specific attack conditions that are
+#         unlikely in containerized .NET applications.
+# Mitigation: Using slim images and latest patches. Monitoring for updates.
+CVE-2023-45853
+
+# CVE-2023-2953: OpenLDAP null pointer dereference
+# Severity: HIGH  
+# Status: affected in Debian 12 (Bookworm)
+# Reason: This is in libldap-2.5-0 from base image. The application does not
+#         directly use LDAP functionality, reducing attack surface.
+# Mitigation: Using slim images. Will update when patched version available.
+CVE-2023-2953
+
+# CVE-2025-6020: Linux-PAM directory traversal
+# Severity: HIGH
+# Status: Recently disclosed, patch pending
+# Reason: This is in libpam-modules from base image. The application runs as
+#         non-root user with limited permissions, mitigating impact.
+# Mitigation: Using non-root user in containers. Monitoring for updates.
+CVE-2025-6020
+
+# Note: This file should be reviewed regularly (weekly/monthly) to:
+# 1. Check if patches have been released for ignored CVEs
+# 2. Remove entries when vulnerabilities are fixed
+# 3. Update base images to incorporate security patches
+# 4. Ensure ignored CVEs don't pose unacceptable risk to the application

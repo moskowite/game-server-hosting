@@ -303,7 +303,7 @@ jobs:
         echo "## Container Security Scan - API 🐳" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         
-        # Run Trivy scan
+        # Run Trivy scan with .trivyignore for known base image CVEs
         trivy image --severity HIGH,CRITICAL --format json --output api-trivy-results.json game-server-api:${{ github.sha }}
         trivy image --severity HIGH,CRITICAL game-server-api:${{ github.sha }} | tee api-trivy-results.txt
         
@@ -325,7 +325,7 @@ jobs:
         echo "## Container Security Scan - Client 🐳" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         
-        # Run Trivy scan
+        # Run Trivy scan with .trivyignore for known base image CVEs
         trivy image --severity HIGH,CRITICAL --format json --output client-trivy-results.json game-server-client:${{ github.sha }}
         trivy image --severity HIGH,CRITICAL game-server-client:${{ github.sha }} | tee client-trivy-results.txt
         

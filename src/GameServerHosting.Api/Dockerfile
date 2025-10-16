@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build
 WORKDIR /src
 
 # Copy solution file and project files for layer caching
@@ -25,11 +25,15 @@ RUN dotnet build GameServerHosting.Api.csproj -c Release -o /app/build
 RUN dotnet publish GameServerHosting.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 # Stage 2: Runtime
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-bookworm-slim AS runtime
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Update packages and install curl for healthcheck
+# This helps mitigate known vulnerabilities in base image
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y curl && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
