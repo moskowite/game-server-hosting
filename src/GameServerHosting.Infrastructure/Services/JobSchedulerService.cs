@@ -1,4 +1,5 @@
 using GameServerHosting.Application.Interfaces;
+using Microsoft.Extensions.Logging;
 using Quartz;
 
 namespace GameServerHosting.Infrastructure.Services;

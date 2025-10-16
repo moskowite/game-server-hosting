@@ -1,7 +1,9 @@
 using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Text;
+using GameServerHosting.Domain.Enums;
 
 namespace GameServerHosting.Infrastructure.Services;
 
@@ -264,8 +266,8 @@ public class InvoiceService : IInvoiceService
             <div><strong>Order #:</strong> {order.OrderNumber}</div>
             <div><strong>Date:</strong> {invoiceDate:MMMM dd, yyyy}</div>
             <div>
-                <span class=""status-badge {(order.Status == Shared.Enums.OrderStatus.Completed ? "status-paid" : "status-pending")}"">
-                    {(order.Status == Shared.Enums.OrderStatus.Completed ? "PAID" : order.Status.ToString().ToUpper())}
+                <span class=""status-badge {(order.Status == OrderStatus.Completed ? "status-paid" : "status-pending")}"">
+                    {(order.Status == OrderStatus.Completed ? "PAID" : order.Status.ToString().ToUpper())}
                 </span>
             </div>
         </div>
@@ -334,7 +336,7 @@ public class InvoiceService : IInvoiceService
 
     <div class=""payment-info"">
         <div class=""section-title"">Payment Status</div>
-        {(order.Status == Shared.Enums.OrderStatus.Completed ? 
+        {(order.Status == OrderStatus.Completed ? 
             $"<p>✓ <strong>Payment Received:</strong> This invoice has been paid in full on {order.PaymentDate:MMMM dd, yyyy}.</p>" :
             "<p>⚠ <strong>Payment Pending:</strong> This invoice is awaiting payment.</p>")}
         {(payment?.CompletedAt != null ? $"<p><strong>Payment Completed At:</strong> {payment.CompletedAt.Value:MMMM dd, yyyy HH:mm:ss} UTC</p>" : "")}

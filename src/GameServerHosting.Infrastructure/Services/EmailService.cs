@@ -1,5 +1,6 @@
 using GameServerHosting.Application.DTOs;
 using GameServerHosting.Application.Interfaces;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SendGrid;
 using SendGrid.Helpers.Mail;

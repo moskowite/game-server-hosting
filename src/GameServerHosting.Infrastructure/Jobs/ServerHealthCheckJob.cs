@@ -2,6 +2,7 @@ using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace GameServerHosting.Infrastructure.Jobs;
 

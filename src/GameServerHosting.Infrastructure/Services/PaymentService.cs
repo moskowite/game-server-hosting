@@ -2,6 +2,7 @@ using GameServerHosting.Application.DTOs;
 using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Entities;
 using GameServerHosting.Domain.Enums;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Stripe;
 using System.Text.Json;
@@ -329,7 +330,7 @@ public class PaymentService : IPaymentService
                     Status = session.PaymentStatus == "paid" ? OrderStatus.Completed : OrderStatus.Pending,
                     TotalAmount = serverPlan.Price * quantity,
                     Currency = session.Currency?.ToUpper() ?? "USD",
-                    PaymentMethod = Shared.Enums.PaymentMethod.Stripe,
+                    PaymentMethod = Domain.Enums.PaymentMethod.Stripe,
                     PaymentTransactionId = session.Id,
                     PaymentDate = session.PaymentStatus == "paid" ? DateTime.UtcNow : null,
                     CreatedAt = DateTime.UtcNow,
@@ -624,7 +625,7 @@ public class PaymentService : IPaymentService
             payment.Amount = paymentIntent.Amount / 100m; // Convert from cents to dollars
             payment.Currency = paymentIntent.Currency?.ToUpper() ?? "USD";
             payment.Status = MapPaymentIntentStatus(paymentIntent.Status ?? "unknown");
-            payment.PaymentMethod = Shared.Enums.PaymentMethod.Stripe;
+            payment.PaymentMethod = Domain.Enums.PaymentMethod.Stripe;
             payment.UpdatedAt = DateTime.UtcNow;
 
             if (!isNew)

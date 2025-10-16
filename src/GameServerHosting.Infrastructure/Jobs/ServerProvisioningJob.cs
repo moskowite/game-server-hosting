@@ -1,6 +1,7 @@
 using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace GameServerHosting.Infrastructure.Jobs;
 

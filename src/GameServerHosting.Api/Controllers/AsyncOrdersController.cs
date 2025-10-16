@@ -79,7 +79,7 @@ internal class AsyncOrdersController : ControllerBase
                 UpdatedAt = DateTime.UtcNow
             };
 
-            _unitOfWork.Orders.Add(order);
+            await _unitOfWork.Orders.AddAsync(order);
 
             // Create game server entity (placeholder - will be fully provisioned asynchronously)
             var gameServer = new GameServer
@@ -95,7 +95,7 @@ internal class AsyncOrdersController : ControllerBase
                 UpdatedAt = DateTime.UtcNow
             };
 
-            _unitOfWork.GameServers.Add(gameServer);
+            await _unitOfWork.GameServers.AddAsync(gameServer);
 
             // Link server to order
             order.ServerId = gameServer.Id;
@@ -123,7 +123,7 @@ internal class AsyncOrdersController : ControllerBase
                 })
             };
 
-            _context.AsyncOperations.Add(operation);
+            await _unitOfWork.AsyncOperations.AddAsync(operation);
 
             // Enqueue OrderCreated event
             await _outboxService.EnqueueAsync(new OrderCreated

@@ -51,7 +51,7 @@ public class UserRepository : Repository<ApplicationUser>, IUserRepository
     public async Task<ApplicationUser?> GetWithPreferencesAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await _dbSet
-            .Include(u => u.UserPreferences)
+            // .Include(u => u.UserPreferences) // TODO: Add UserPreferences navigation property to ApplicationUser
             .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
     }
 

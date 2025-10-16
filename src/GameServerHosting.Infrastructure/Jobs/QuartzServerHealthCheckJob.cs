@@ -1,4 +1,5 @@
 using Quartz;
+using Microsoft.Extensions.Logging;
 
 namespace GameServerHosting.Infrastructure.Jobs;
 

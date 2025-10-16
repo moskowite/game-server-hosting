@@ -2,6 +2,7 @@ using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Application.DTOs;
 using GameServerHosting.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Stripe;
 using Stripe.Checkout;
