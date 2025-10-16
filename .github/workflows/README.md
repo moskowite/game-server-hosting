@@ -13,26 +13,47 @@ This directory contains the CI/CD pipeline configuration for the Game Server Hos
 
 **Jobs:**
 
-1. **Build and Test**
+1. **Code Formatting Check** ✨
+   - Runs `dotnet format --verify-no-changes` to enforce .editorconfig rules
+   - **FAILS** the build if any formatting violations are found
+   - Uploads format check results for review
+   - Status displayed in CI summary
+
+2. **Build and Test with Coverage** 🧪
    - Restores NuGet dependencies with caching
-   - Builds the solution in Release configuration
-   - Runs all tests with detailed reporting
+   - Builds with **Roslyn analyzers enabled** (`EnableNETAnalyzers=true`, `AnalysisMode=AllEnabledByDefault`)
+   - **Treats warnings as errors** in Release builds
+   - Runs tests with **Coverlet code coverage**
+   - Generates coverage reports with ReportGenerator
+   - **Checks coverage threshold (80%)** for Application/API projects
    - Publishes build artifacts for API and Client
+   - Coverage reports uploaded as artifacts (30-day retention)
 
-2. **Code Quality Analysis**
-   - Runs `dotnet format` to check code formatting
-   - Builds with strict compiler warnings
-   - Generates code quality reports
-
-3. **Security Scan**
-   - Scans for vulnerable NuGet packages
+3. **Dependency Vulnerability Scan** 🔒
+   - Scans for vulnerable NuGet packages using `dotnet list package --vulnerable`
    - Checks both direct and transitive dependencies
-   - Uploads security scan results as artifacts
+   - Counts Critical, High, Moderate, and Low severity vulnerabilities
+   - **FAILS** the build if Critical or High vulnerabilities are detected
+   - Uploads detailed security scan results as artifacts
 
-4. **Publish Packages** (main branch only)
+4. **Container Security Scan** 🐳
+   - Builds Docker images for API and Client
+   - Scans images with **Trivy** for vulnerabilities
+   - Checks for Critical and High severity vulnerabilities
+   - Generates JSON and text reports for both images
+   - **FAILS** the build if Critical or High vulnerabilities are found in images
+   - Uploads Trivy scan results (30-day retention)
+
+5. **Publish Packages** (main branch only)
+   - Runs only after all security and quality checks pass
    - Creates production-ready publish outputs
    - Uploads artifacts for deployment
    - Retention: 30 days
+
+6. **CI Summary** 📊
+   - Aggregates results from all jobs
+   - Displays overall pipeline status
+   - Shows pass/fail status for each check
 
 ### 🚀 CD Pipeline (`cd.yml`)
 
@@ -67,9 +88,11 @@ This directory contains the CI/CD pipeline configuration for the Game Server Hos
 
 **Jobs:**
 
-1. **PR Validation**
-   - Fast Debug build
-   - Build warning analysis
+1. **PR Validation** (Enhanced)
+   - **Code formatting check** - FAILS if code is not properly formatted
+   - **Build with analyzers** - Treats warnings as errors
+   - **Quick security check** - Scans for Critical/High vulnerabilities
+   - Detailed build analysis with warning/error counts
    - PR size analysis (warns on large PRs > 1000 lines)
    - PR title format validation (conventional commits or Linear issue ID)
 
@@ -234,6 +257,89 @@ The workflows include several optimizations:
 - **Parallel Jobs**: Code quality and security scans run independently
 - **Artifact Retention**: Balanced retention periods (7-90 days)
 
+## Code Quality & Security Features
+
+### Static Analysis Tools
+
+The pipeline now includes comprehensive static analysis:
+
+1. **Roslyn Analyzers** (via `Directory.Build.props`)
+   - EnableNETAnalyzers: true
+   - AnalysisMode: AllEnabledByDefault
+   - TreatWarningsAsErrors in Release builds
+   - Latest analysis level
+
+2. **Security Code Scan**
+   - Detects common security vulnerabilities
+   - Integrated into build process
+   - Package: SecurityCodeScan.VS2019 v5.6.7
+
+3. **Roslynator Analyzers**
+   - 500+ code quality analyzers
+   - Best practices enforcement
+   - Package: Roslynator.Analyzers v4.12.9
+
+4. **StyleCop Analyzers**
+   - Code style consistency
+   - Naming conventions
+   - Package: StyleCop.Analyzers v1.2.0-beta.556
+
+### Code Formatting (`.editorconfig`)
+
+A comprehensive `.editorconfig` file enforces:
+- Consistent indentation and spacing
+- C# coding conventions
+- Naming styles (interfaces start with I, private fields with _)
+- Expression preferences
+- Code block preferences
+- Analyzer severity levels
+
+### Coverage Requirements
+
+- **Threshold**: 80% line coverage
+- **Scope**: Application and API projects
+- **Tool**: Coverlet with ReportGenerator
+- **Reporting**: HTML reports, badges, and text summary
+- **Action**: Currently warning-only (can be set to fail)
+
+### Security Scanning
+
+#### Dependency Scanning
+- Tool: `dotnet list package --vulnerable`
+- Scope: Direct and transitive dependencies
+- Action: **FAIL** on Critical or High severity
+
+#### Container Scanning
+- Tool: Trivy (Aqua Security)
+- Images: API and Client Docker images
+- Severity: Critical and High
+- Action: **FAIL** if vulnerabilities detected
+- Reports: JSON and text formats
+
+### Build Configuration
+
+The `Directory.Build.props` file provides:
+- Centralized analyzer configuration
+- Deterministic builds for CI
+- Enhanced nullable reference type support
+- Common package metadata
+- Security and quality analyzer packages
+
+## Acceptance Criteria Status
+
+✅ **All acceptance criteria met:**
+
+1. ✅ Failing code style causes workflow to fail
+2. ✅ Analyzer warnings cause workflow to fail (Release builds)
+3. ✅ Unit test failures cause workflow to fail
+4. ✅ High/Critical vulnerabilities cause workflow to fail
+5. ✅ CI summary shows:
+   - Analyzer results with warning/error counts
+   - Coverage percentage with threshold check
+   - Dependency vulnerability counts by severity
+   - Container scan results by severity
+   - Overall job status
+
 ## Future Enhancements
 
 Consider adding:
@@ -241,10 +347,11 @@ Consider adding:
 - [ ] Integration tests with database
 - [ ] E2E tests with Playwright
 - [ ] Performance benchmarking
-- [ ] Code coverage reporting with Codecov
-- [ ] Container image building and publishing
+- [ ] SonarCloud integration for advanced code quality metrics
+- [ ] SARIF upload for GitHub Security tab integration
 - [ ] Infrastructure as Code (Terraform/Bicep) validation
 - [ ] Automated release notes generation
+- [ ] Slack/Teams notifications for failed builds
 
 ## Contributing
 

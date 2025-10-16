@@ -14,7 +14,7 @@ namespace GameServerHosting.Api.Controllers;
 [ApiController]
 [Route("api/orders-async")]
 [Authorize]
-public class AsyncOrdersController : ControllerBase
+internal class AsyncOrdersController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOutboxService _outboxService;
@@ -79,7 +79,7 @@ public class AsyncOrdersController : ControllerBase
                 UpdatedAt = DateTime.UtcNow
             };
 
-            _unitOfWork.Orders.Add(order);
+            await _unitOfWork.Orders.AddAsync(order);
 
             // Create game server entity (placeholder - will be fully provisioned asynchronously)
             var gameServer = new GameServer
@@ -95,7 +95,7 @@ public class AsyncOrdersController : ControllerBase
                 UpdatedAt = DateTime.UtcNow
             };
 
-            _unitOfWork.GameServers.Add(gameServer);
+            await _unitOfWork.GameServers.AddAsync(gameServer);
 
             // Link server to order
             order.ServerId = gameServer.Id;
@@ -123,7 +123,7 @@ public class AsyncOrdersController : ControllerBase
                 })
             };
 
-            _context.AsyncOperations.Add(operation);
+            await _unitOfWork.AsyncOperations.AddAsync(operation);
 
             // Enqueue OrderCreated event
             await _outboxService.EnqueueAsync(new OrderCreated
@@ -171,13 +171,33 @@ public class AsyncOrdersController : ControllerBase
                 GameServerId = gameServer.Id,
                 Status = "Pending",
                 Message = "Order created successfully. Server provisioning has been initiated.",
-                StatusUrl = $"/api/operations/{operation.Id}"
+                StatusUrl = new Uri($"/api/operations/{operation.Id}", UriKind.Relative)
             });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex, "Invalid operation while creating async order for user {UserId}", userId);
+
+            // Rollback transaction
+            try
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+            }
+            catch (InvalidOperationException rollbackEx)
+            {
+                _logger.LogError(rollbackEx, "Error rolling back transaction");
+            }
+            catch (Exception rollbackEx)
+            {
+                _logger.LogError(rollbackEx, "Unexpected error rolling back transaction");
+            }
+
+            return StatusCode(500, new { message = "An invalid operation occurred while creating the order" });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating async order for user {UserId}", userId);
-            
+            _logger.LogError(ex, "Unexpected error creating async order for user {UserId}", userId);
+
             // Rollback transaction
             try
             {
@@ -188,7 +208,7 @@ public class AsyncOrdersController : ControllerBase
                 _logger.LogError(rollbackEx, "Error rolling back transaction");
             }
 
-            return StatusCode(500, new { message = "An error occurred while creating the order" });
+            return StatusCode(500, new { message = "An unexpected error occurred while creating the order" });
         }
     }
 
@@ -204,7 +224,7 @@ public class AsyncOrdersController : ControllerBase
 
     // NOTE: This is a temporary reference to context for demonstration
     // In a real implementation, AsyncOperations would be part of UnitOfWork
-    private Infrastructure.Data.GameServerDbContext _context => 
+    private Infrastructure.Data.GameServerDbContext Context =>
         (Infrastructure.Data.GameServerDbContext)_unitOfWork.GetType()
             .GetField("_context", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
             .GetValue(_unitOfWork)!;
@@ -215,7 +235,7 @@ public class AsyncOrdersController : ControllerBase
 /// <summary>
 /// Request model for creating an async order
 /// </summary>
-public class CreateAsyncOrderRequest
+internal class CreateAsyncOrderRequest
 {
     /// <summary>
     /// Server plan ID to order
@@ -246,7 +266,7 @@ public class CreateAsyncOrderRequest
 /// <summary>
 /// Response model for async order creation
 /// </summary>
-public class AsyncOrderCreationResponse
+internal class AsyncOrderCreationResponse
 {
     /// <summary>
     /// Operation ID for tracking the async operation
@@ -286,7 +306,7 @@ public class AsyncOrderCreationResponse
     /// <summary>
     /// URL to check operation status
     /// </summary>
-    public string StatusUrl { get; set; } = string.Empty;
+    public Uri? StatusUrl { get; set; }
 }
 
 #endregion

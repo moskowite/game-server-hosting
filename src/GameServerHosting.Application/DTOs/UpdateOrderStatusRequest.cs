@@ -1,5 +1,5 @@
-using GameServerHosting.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
+using GameServerHosting.Domain.Enums;
 
 namespace GameServerHosting.Application.DTOs;
 

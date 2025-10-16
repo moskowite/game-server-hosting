@@ -3,6 +3,7 @@ using GameServerHosting.Application.DTOs;
 using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace GameServerHosting.Infrastructure.Services;

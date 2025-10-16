@@ -317,7 +317,9 @@ try
                 policy.SetIsOriginAllowed(origin =>
                 {
                     if (string.IsNullOrWhiteSpace(origin))
+                    {
                         return false;
+                    }
 
                     var uri = new Uri(origin);
                     // Allow any localhost or 127.0.0.1 origin on any port

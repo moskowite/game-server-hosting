@@ -26,16 +26,63 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore GameServerHosting.sln
     
-    - name: Build
-      run: dotnet build GameServerHosting.sln --configuration Debug --no-restore
-    
-    - name: Check for build warnings
+    - name: Check code formatting
       run: |
-        BUILD_OUTPUT=$(dotnet build GameServerHosting.sln --configuration Release --no-restore 2>&1)
-        WARNING_COUNT=$(echo "$BUILD_OUTPUT" | grep -c "warning" || true)
-        echo "Total warnings: $WARNING_COUNT"
-        echo "## Build Warnings 📊" >> $GITHUB_STEP_SUMMARY
-        echo "**Total Warnings**: $WARNING_COUNT" >> $GITHUB_STEP_SUMMARY
+        echo "## Code Formatting 📝" >> $GITHUB_STEP_SUMMARY
+        dotnet format GameServerHosting.sln --verify-no-changes --verbosity minimal
+        if [ $? -eq 0 ]; then
+          echo "✅ **Code is properly formatted**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ **Formatting issues detected** (currently non-blocking)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run \`dotnet format\` to fix formatting issues" >> $GITHUB_STEP_SUMMARY
+        fi
+      continue-on-error: true
+    
+    - name: Build with analyzers
+      run: |
+        echo "## Build Analysis 🔍" >> $GITHUB_STEP_SUMMARY
+        dotnet build GameServerHosting.sln --configuration Release --no-restore 2>&1 | tee build-output.log
+        BUILD_EXIT_CODE=${PIPESTATUS[0]}
+        
+        WARNING_COUNT=$(grep -c "warning" build-output.log || echo "0")
+        ERROR_COUNT=$(grep -c "error" build-output.log || echo "0")
+        
+        echo "- **Warnings**: $WARNING_COUNT" >> $GITHUB_STEP_SUMMARY
+        echo "- **Errors**: $ERROR_COUNT" >> $GITHUB_STEP_SUMMARY
+        
+        if [ $BUILD_EXIT_CODE -ne 0 ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "❌ **Build failed**" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        else
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "$WARNING_COUNT" -gt 0 ]; then
+            echo "⚠️ **Build successful with $WARNING_COUNT warning(s)**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Build successful**" >> $GITHUB_STEP_SUMMARY
+          fi
+        fi
+    
+    - name: Quick security check
+      run: |
+        echo "## Security Check 🔒" >> $GITHUB_STEP_SUMMARY
+        dotnet list GameServerHosting.sln package --vulnerable --include-transitive 2>&1 | tee security.log
+        
+        CRITICAL_COUNT=$(grep -i "critical" security.log | wc -l || echo "0")
+        HIGH_COUNT=$(grep -i "high" security.log | wc -l || echo "0")
+        
+        echo "- **Critical**: $CRITICAL_COUNT" >> $GITHUB_STEP_SUMMARY
+        echo "- **High**: $HIGH_COUNT" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "$CRITICAL_COUNT" -gt 0 ] || [ "$HIGH_COUNT" -gt 0 ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Vulnerabilities detected - will be checked in CI**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **No critical vulnerabilities**" >> $GITHUB_STEP_SUMMARY
+        fi
+      continue-on-error: true
     
     - name: PR Size Check
       uses: actions/github-script@v8

@@ -5,6 +5,7 @@ using System.Text;
 using GameServerHosting.Application.DTOs;
 using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Entities;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 

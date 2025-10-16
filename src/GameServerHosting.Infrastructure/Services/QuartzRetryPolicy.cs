@@ -52,10 +52,14 @@ public static class QuartzRetryPolicy
         retryIntervals ??= new[] { 60, 300, 900 };
         
         if (attemptNumber < 0)
+        {
             return 0;
+        }
         
         if (attemptNumber >= retryIntervals.Length)
+        {
             return retryIntervals[^1]; // Return last interval
+        }
         
         return retryIntervals[attemptNumber];
     }

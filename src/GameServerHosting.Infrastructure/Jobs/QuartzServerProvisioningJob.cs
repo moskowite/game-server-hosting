@@ -1,7 +1,10 @@
 using Quartz;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using GameServerHosting.Application.DTOs;
 using GameServerHosting.Application.Interfaces;
+using GameServerHosting.Infrastructure.Services;
 
 namespace GameServerHosting.Infrastructure.Jobs;
 

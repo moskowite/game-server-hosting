@@ -97,9 +97,8 @@ public class OrdersController : ControllerBase
             // Step 4: Create orders (one order per cart item for better tracking)
             var orders = new List<Order>();
             var datePrefix = DateTime.UtcNow.ToString("yyyyMMdd");
-            var todayOrderCount = await _context.Orders
-                .Where(o => o.OrderNumber.StartsWith($"ORD-{datePrefix}"))
-                .CountAsync();
+            var todayOrderCount = await _unitOfWork.Orders
+                .CountAsync(o => o.OrderNumber.StartsWith($"ORD-{datePrefix}"));
 
             foreach (var cartItem in cartValidation.CartItems)
             {
@@ -123,15 +122,15 @@ public class OrdersController : ControllerBase
                 };
 
                 orders.Add(order);
-                _context.Orders.Add(order);
+                await _unitOfWork.Orders.AddAsync(order);
             }
 
             // Save all orders
-            await _context.SaveChangesAsync();
+            await _unitOfWork.SaveChangesAsync();
 
             // Step 5: Clear cart after successful order creation
-            _context.CartItems.RemoveRange(cartValidation.CartItems);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.CartItems.ClearCartAsync(userGuid);
+            await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation(
                 "Created {OrderCount} orders for user {UserId}, total: {Total} {Currency}",
@@ -191,9 +190,8 @@ public class OrdersController : ControllerBase
             var userGuid = Guid.Parse(userId);
 
             // Validate server plan exists
-            var serverPlan = await _context.ServerPlans
-                .Include(sp => sp.ServerType)
-                .FirstOrDefaultAsync(sp => sp.Id == request.ServerPlanId);
+            var serverPlan = await _unitOfWork.ServerPlans
+                .GetWithServerTypeAsync(request.ServerPlanId);
 
             if (serverPlan == null)
             {
@@ -211,8 +209,8 @@ public class OrdersController : ControllerBase
             GameServer? gameServer = null;
             if (request.ServerId.HasValue)
             {
-                gameServer = await _context.GameServers
-                    .FirstOrDefaultAsync(gs => gs.Id == request.ServerId.Value);
+                gameServer = await _unitOfWork.GameServers
+                    .GetByIdAsync(request.ServerId.Value);
 
                 if (gameServer == null)
                 {
@@ -230,11 +228,10 @@ public class OrdersController : ControllerBase
             }
 
             // Generate order number (format: ORD-YYYYMMDD-NNNNN)
-            var datePrefix = DateTime.UtcNow.ToString("yyyyMMdd");
-            var todayOrderCount = await _context.Orders
-                .Where(o => o.OrderNumber.StartsWith($"ORD-{datePrefix}"))
-                .CountAsync();
-            var orderNumber = $"ORD-{datePrefix}-{(todayOrderCount + 1):D5}";
+            var datePrefixForOrder = DateTime.UtcNow.ToString("yyyyMMdd");
+            var todayOrderCount = await _unitOfWork.Orders
+                .CountAsync(o => o.OrderNumber.StartsWith($"ORD-{datePrefixForOrder}"));
+            var orderNumber = $"ORD-{datePrefixForOrder}-{(todayOrderCount + 1):D5}";
 
             // Create order
             var order = new Order
@@ -254,8 +251,8 @@ public class OrdersController : ControllerBase
                 UpdatedAt = DateTime.UtcNow
             };
 
-            _context.Orders.Add(order);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.Orders.AddAsync(order);
+            await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("Created order {OrderNumber} for user {UserId}", orderNumber, userId);
 
@@ -308,11 +305,7 @@ public class OrdersController : ControllerBase
 
             var userGuid = Guid.Parse(userId);
 
-            var order = await _context.Orders
-                .Include(o => o.GameServer)
-                .Include(o => o.ServerPlan)
-                    .ThenInclude(sp => sp!.ServerType)
-                .FirstOrDefaultAsync(o => o.Id == id);
+            var order = await _unitOfWork.Orders.GetWithDetailsAsync(id);
 
             if (order == null)
             {
@@ -384,11 +377,7 @@ public class OrdersController : ControllerBase
                 return StatusCode(403, new { message = "You don't have permission to view these orders" });
             }
 
-            var orders = await _context.Orders
-                .Where(o => o.UserId == userId)
-                .Include(o => o.GameServer)
-                .Include(o => o.ServerPlan)
-                    .ThenInclude(sp => sp!.ServerType)
+            var orders = (await _unitOfWork.Orders.GetByUserIdAsync(userId))
                 .OrderByDescending(o => o.CreatedAt)
                 .Select(o => new OrderDto
                 {
@@ -405,7 +394,7 @@ public class OrdersController : ControllerBase
                     GameName = o.ServerPlan != null && o.ServerPlan.ServerType != null ? o.ServerPlan.ServerType.GameName : null,
                     PlanName = o.ServerPlan != null ? o.ServerPlan.Name : null
                 })
-                .ToListAsync();
+                .ToList();
 
             _logger.LogInformation("Retrieved {Count} orders for user {UserId}", orders.Count, userId);
             return Ok(orders);
@@ -442,11 +431,7 @@ public class OrdersController : ControllerBase
 
             var userGuid = Guid.Parse(userId);
 
-            var order = await _context.Orders
-                .Include(o => o.GameServer)
-                .Include(o => o.ServerPlan)
-                    .ThenInclude(sp => sp!.ServerType)
-                .FirstOrDefaultAsync(o => o.Id == id);
+            var order = await _unitOfWork.Orders.GetWithDetailsAsync(id);
 
             if (order == null)
             {
@@ -492,7 +477,8 @@ public class OrdersController : ControllerBase
                 order.PaymentTransactionId = request.PaymentTransactionId;
             }
 
-            await _context.SaveChangesAsync();
+            _unitOfWork.Orders.Update(order);
+            await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("Updated order {OrderId} status to {Status}", id, request.Status);
 
@@ -546,8 +532,7 @@ public class OrdersController : ControllerBase
             var userGuid = Guid.Parse(userId);
 
             // Verify order exists and belongs to user
-            var order = await _context.Orders
-                .FirstOrDefaultAsync(o => o.Id == id);
+            var order = await _unitOfWork.Orders.GetByIdAsync(id);
 
             if (order == null)
             {
@@ -600,8 +585,7 @@ public class OrdersController : ControllerBase
             var userGuid = Guid.Parse(userId);
 
             // Verify order exists and belongs to user
-            var order = await _context.Orders
-                .FirstOrDefaultAsync(o => o.Id == id);
+            var order = await _unitOfWork.Orders.GetByIdAsync(id);
 
             if (order == null)
             {
