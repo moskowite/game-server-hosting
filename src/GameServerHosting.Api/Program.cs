@@ -148,9 +148,6 @@ try
     // Register Email Service
     builder.Services.AddScoped<IEmailService, EmailService>();
 
-    // Register Stripe Service
-    builder.Services.AddScoped<IStripeService, StripeService>();
-
     // Register Order Validation Service
     builder.Services.AddScoped<IOrderValidationService, OrderValidationService>();
 
