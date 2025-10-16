@@ -2,17 +2,34 @@
 
 Complete guide for setting up PostgreSQL, Entity Framework Core, and database migrations for the Game Server Hosting platform.
 
+> 📚 **For detailed migration workflows**, see the [Database Migrations Guide](../development/database-migrations.md)
+
 ## 🚀 Quick Start
+
+### Linux/macOS (Using Makefile)
 
 ```bash
 # 1. Start PostgreSQL (Docker)
-docker-compose up -d postgres
+make docker.db.up
 
 # 2. Install EF Core tools
 dotnet tool install --global dotnet-ef
 
 # 3. Apply migrations
-dotnet ef database update --project src/GameServerHosting.Api
+make db.migrate
+```
+
+### Windows (Using PowerShell)
+
+```powershell
+# 1. Start PostgreSQL (Docker)
+docker compose up -d postgres
+
+# 2. Install EF Core tools
+dotnet tool install --global dotnet-ef
+
+# 3. Apply migrations
+.\scripts\db-migrations.ps1 -Command migrate
 ```
 
 ## 🐳 PostgreSQL Setup
@@ -131,51 +148,58 @@ public class GameServerDbContext : IdentityDbContext<ApplicationUser>
 
 ## 📦 Migrations
 
+> 📚 **See [Database Migrations Guide](../development/database-migrations.md)** for complete migration workflows and best practices.
+
 ### Install EF Core Tools
 
 ```bash
 dotnet tool install --global dotnet-ef
 ```
 
-### Common Migration Commands
+### Quick Migration Commands
+
+#### Linux/macOS (Makefile)
 
 ```bash
 # Create a new migration
-dotnet ef migrations add <MigrationName> --project src/GameServerHosting.Api
+make db.add-migration NAME=YourMigrationName
 
 # Apply migrations to database
-dotnet ef database update --project src/GameServerHosting.Api
+make db.migrate
 
-# Rollback to specific migration
-dotnet ef database update <MigrationName> --project src/GameServerHosting.Api
+# Check migration status
+make db.status
 
-# Remove last migration (if not applied)
-dotnet ef migrations remove --project src/GameServerHosting.Api
-
-# List all migrations
-dotnet ef migrations list --project src/GameServerHosting.Api
-
-# Generate SQL script
-dotnet ef migrations script --project src/GameServerHosting.Api --output migration.sql
+# Reset database (WARNING: deletes all data!)
+make db.reset
 ```
 
-### Migration Workflow
+#### Windows (PowerShell)
 
-1. **Make entity changes** in code
-2. **Create migration**: `dotnet ef migrations add <Name>`
-3. **Review migration** in `Data/Migrations/` folder
-4. **Test locally**: `dotnet ef database update`
-5. **Commit migration** to source control
-6. **Deploy** to other environments
+```powershell
+# Create a new migration
+.\scripts\db-migrations.ps1 -Command add-migration -Name YourMigrationName
+
+# Apply migrations to database
+.\scripts\db-migrations.ps1 -Command migrate
+
+# Check migration status
+.\scripts\db-migrations.ps1 -Command status
+
+# Reset database (WARNING: deletes all data!)
+.\scripts\db-migrations.ps1 -Command reset
+```
 
 ### First-Time Setup
 
-```bash
-# Enable UUID extension (required for migrations)
-docker exec gameserver-postgres psql -U postgres -d gameserverhosting_dev -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+The UUID extension is now automatically created by migrations. Simply run:
 
-# Apply all migrations
-dotnet ef database update --project src/GameServerHosting.Api
+```bash
+# Linux/macOS
+make db.migrate
+
+# Windows
+.\scripts\db-migrations.ps1 -Command migrate
 ```
 
 ## 🌱 Data Seeding
@@ -327,9 +351,9 @@ dotnet ef database update --project src/GameServerHosting.Api
 
 - [Quick Start Guide](quick-start.md) - Initial setup
 - [Docker Setup](docker-setup.md) - Docker Compose details
+- [Database Migrations Guide](../development/database-migrations.md) - **Complete migration workflows**
 - [Database Schema](../development/database-schema.md) - Complete schema reference
-- [Migration Guide](../reference/migration-guide.md) - Advanced migration topics
-- [Troubleshooting](../reference/troubleshooting.md) - More solutions
+- [Troubleshooting](../troubleshooting/common-issues.md) - More solutions
 
 ## 💡 Best Practices
 

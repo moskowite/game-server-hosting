@@ -103,24 +103,49 @@ dotnet run --project src/GameServerHosting.Client   # Terminal 2
 
 ## 📋 Common Commands
 
+### Docker
+
 ```bash
-# Docker (Recommended)
 docker compose up -d              # Start all services
 docker compose up -d --build      # Rebuild and start
 docker compose down               # Stop all services
 docker compose logs -f            # View logs
 docker compose ps                 # Check running containers
+```
 
-# Development (Local)
+### Development
+
+```bash
 dotnet build                                        # Build solution
 dotnet test                                         # Run tests
 dotnet watch run --project src/GameServerHosting.Api  # Hot reload
+```
 
-# Database
-dotnet ef migrations add <Name> --project src/GameServerHosting.Api
-dotnet ef database update --project src/GameServerHosting.Api
+### Database Migrations
 
-# CI/CD
+#### Linux/macOS (Makefile)
+
+```bash
+make db.add-migration NAME=YourMigrationName  # Create migration
+make db.migrate                               # Apply migrations
+make db.status                                # Check status
+make db.reset                                 # Reset database (dev only)
+make docker.db.up                             # Start PostgreSQL
+```
+
+#### Windows (PowerShell)
+
+```powershell
+.\scripts\db-migrations.ps1 -Command add-migration -Name YourMigrationName
+.\scripts\db-migrations.ps1 -Command migrate
+.\scripts\db-migrations.ps1 -Command status
+```
+
+📖 **See [Database Migrations Guide](docs/development/database-migrations.md)** for detailed workflows and best practices.
+
+### CI/CD
+
+```bash
 gh workflow run ci.yml            # Trigger CI
 gh workflow run cd.yml -f environment=staging    # Deploy to staging
 ```
