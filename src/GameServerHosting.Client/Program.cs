@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using GameServerHosting.Application.DTOs;
 using GameServerHosting.Client;
 using GameServerHosting.Client.Models;
 using GameServerHosting.Client.Services;

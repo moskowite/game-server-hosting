@@ -14,16 +14,13 @@ namespace GameServerHosting.Api.Controllers;
 [Authorize]
 public class PaymentsController : ControllerBase
 {
-    private readonly IStripeService _stripeService;
     private readonly IPaymentService _paymentService;
     private readonly ILogger<PaymentsController> _logger;
 
     public PaymentsController(
-        IStripeService stripeService,
         IPaymentService paymentService,
         ILogger<PaymentsController> logger)
     {
-        _stripeService = stripeService;
         _paymentService = paymentService;
         _logger = logger;
     }
@@ -54,7 +51,7 @@ public class PaymentsController : ControllerBase
                 return BadRequest(new { error = "Quantity must be at least 1" });
             }
 
-            var session = await _stripeService.CreateCheckoutSessionAsync(
+            var session = await _paymentService.CreateCheckoutSessionAsync(
                 request.ServerPlanId,
                 userId,
                 request.Quantity);
@@ -96,7 +93,7 @@ public class PaymentsController : ControllerBase
     {
         try
         {
-            var session = await _stripeService.GetCheckoutSessionAsync(sessionId);
+            var session = await _paymentService.GetCheckoutSessionAsync(sessionId);
 
             return Ok(new CheckoutSessionResponse
             {
@@ -146,7 +143,7 @@ public class PaymentsController : ControllerBase
                 return BadRequest(new { error = "Missing signature" });
             }
 
-            var stripeEvent = _stripeService.ConstructWebhookEvent(json, stripeSignature);
+            var stripeEvent = _paymentService.ConstructWebhookEvent(json, stripeSignature);
 
             _logger.LogInformation("Processing Stripe webhook event: {EventType}", stripeEvent.Type);
 

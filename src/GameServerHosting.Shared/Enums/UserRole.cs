@@ -9,12 +9,12 @@ public enum UserRole
     /// Regular user with standard permissions
     /// </summary>
     User,
-    
+
     /// <summary>
     /// Administrator with full system access
     /// </summary>
     Admin,
-    
+
     /// <summary>
     /// Moderator with elevated permissions
     /// </summary>

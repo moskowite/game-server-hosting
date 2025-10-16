@@ -64,7 +64,7 @@ public class ServerType
     /// Default server configuration (JSON)
     /// </summary>
     public string DefaultConfig { get; set; } = "{}";
-    
+
     /// <summary>
     /// Default game/software version
     /// </summary>
@@ -86,7 +86,7 @@ public class ServerType
     public DateTime UpdatedAt { get; set; }
 
     // Navigation properties
-    
+
     /// <summary>
     /// Game servers using this server type
     /// </summary>

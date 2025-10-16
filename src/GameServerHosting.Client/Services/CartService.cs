@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using GameServerHosting.Application.DTOs;
 using GameServerHosting.Client.Models;
 using Microsoft.JSInterop;
 

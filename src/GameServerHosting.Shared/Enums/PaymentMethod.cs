@@ -9,17 +9,17 @@ public enum PaymentMethod
     /// Credit or debit card
     /// </summary>
     CreditCard,
-    
+
     /// <summary>
     /// PayPal payment
     /// </summary>
     PayPal,
-    
+
     /// <summary>
     /// Stripe payment processor
     /// </summary>
     Stripe,
-    
+
     /// <summary>
     /// Cryptocurrency payment
     /// </summary>

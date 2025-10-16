@@ -83,7 +83,7 @@ public class Order
     public DateTime UpdatedAt { get; set; }
 
     // Navigation properties
-    
+
     /// <summary>
     /// Customer who placed the order
     /// </summary>

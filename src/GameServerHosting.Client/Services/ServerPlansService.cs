@@ -1,5 +1,5 @@
 using System.Net.Http.Json;
-using GameServerHosting.Client.Models;
+using GameServerHosting.Application.DTOs;
 
 namespace GameServerHosting.Client.Services;
 

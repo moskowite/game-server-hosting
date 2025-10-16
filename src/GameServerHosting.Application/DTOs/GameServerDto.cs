@@ -17,7 +17,7 @@ public class GameServerDto
     public DateTime? ExpiresAt { get; set; }
     public DateTime? LastHeartbeatAt { get; set; }
     public DateTime CreatedAt { get; set; }
-    
+
     // Server Type Information
     public string ServerTypeName { get; set; } = string.Empty;
     public string GameName { get; set; } = string.Empty;

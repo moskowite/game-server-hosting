@@ -78,8 +78,6 @@ public interface IPaymentGateway
     Task<CustomerResult> GetCustomerAsync(string customerId);
 }
 
-#region Request DTOs
-
 /// <summary>
 /// Request for creating a checkout session
 /// </summary>
@@ -229,10 +227,6 @@ public class CustomerRequest
     /// </summary>
     public Dictionary<string, string> Metadata { get; set; } = new();
 }
-
-#endregion
-
-#region Response DTOs
 
 /// <summary>
 /// Result of creating/retrieving a checkout session
@@ -428,5 +422,3 @@ public class WebhookEvent
     /// </summary>
     public DateTime CreatedAt { get; set; }
 }
-
-#endregion

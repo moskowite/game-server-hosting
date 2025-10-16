@@ -44,7 +44,7 @@ public class ApplicationUser : IdentityUser<Guid>
     public DateTime? LastLoginAt { get; set; }
 
     // Navigation properties
-    
+
     /// <summary>
     /// Game servers owned by this user
     /// </summary>

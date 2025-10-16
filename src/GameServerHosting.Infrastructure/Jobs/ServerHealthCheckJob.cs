@@ -1,7 +1,5 @@
-using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Enums;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace GameServerHosting.Infrastructure.Jobs;
@@ -11,18 +9,18 @@ namespace GameServerHosting.Infrastructure.Jobs;
 /// </summary>
 public class ServerHealthCheckJob
 {
-    private readonly GameServerDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IServerManagementService _serverManagement;
     private readonly IServerStatusNotificationService _notificationService;
     private readonly ILogger<ServerHealthCheckJob> _logger;
 
     public ServerHealthCheckJob(
-        GameServerDbContext context,
+        IUnitOfWork unitOfWork,
         IServerManagementService serverManagement,
         IServerStatusNotificationService notificationService,
         ILogger<ServerHealthCheckJob> logger)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _serverManagement = serverManagement;
         _notificationService = notificationService;
         _logger = logger;
@@ -38,10 +36,8 @@ public class ServerHealthCheckJob
         try
         {
             // Get all running servers
-            var runningServers = await _context.GameServers
-                .Where(s => s.Status == ServerStatus.Running)
-                .Include(s => s.User)
-                .ToListAsync();
+            var allServers = await _unitOfWork.GameServers.GetAllAsync();
+            var runningServers = allServers.Where(s => s.Status == ServerStatus.Running).ToList();
 
             _logger.LogInformation(
                 "Checking health for {Count} running servers",

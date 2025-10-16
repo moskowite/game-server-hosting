@@ -1,3 +1,5 @@
+using GameServerHosting.Application.DTOs;
+
 namespace GameServerHosting.Client.Models;
 
 /// <summary>

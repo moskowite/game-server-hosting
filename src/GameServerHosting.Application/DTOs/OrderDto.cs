@@ -16,11 +16,11 @@ public class OrderDto
     public PaymentMethod PaymentMethod { get; set; }
     public DateTime? PaymentDate { get; set; }
     public DateTime CreatedAt { get; set; }
-    
+
     // Server Information (if applicable)
     public string? ServerName { get; set; }
     public string? GameName { get; set; }
-    
+
     // Plan Information (if applicable)
     public string? PlanName { get; set; }
 }

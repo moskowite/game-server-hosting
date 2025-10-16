@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using GameServerHosting.Domain.Enums;
 
 namespace GameServerHosting.Client.Models;
 

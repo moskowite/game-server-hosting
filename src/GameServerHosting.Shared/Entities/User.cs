@@ -68,7 +68,7 @@ public class User
     public DateTime? LastLoginAt { get; set; }
 
     // Navigation properties
-    
+
     /// <summary>
     /// Game servers owned by this user
     /// </summary>

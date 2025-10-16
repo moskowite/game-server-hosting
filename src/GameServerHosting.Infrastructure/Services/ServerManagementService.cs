@@ -1,8 +1,6 @@
-using GameServerHosting.Infrastructure.Data;
 using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Entities;
 using GameServerHosting.Domain.Enums;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace GameServerHosting.Infrastructure.Services;
@@ -12,18 +10,18 @@ namespace GameServerHosting.Infrastructure.Services;
 /// </summary>
 public class ServerManagementService : IServerManagementService
 {
-    private readonly GameServerDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ICloudProviderService _cloudProvider;
     private readonly IServerStatusNotificationService _notificationService;
     private readonly ILogger<ServerManagementService> _logger;
 
     public ServerManagementService(
-        GameServerDbContext context,
+        IUnitOfWork unitOfWork,
         ICloudProviderService cloudProvider,
         IServerStatusNotificationService notificationService,
         ILogger<ServerManagementService> logger)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _cloudProvider = cloudProvider;
         _notificationService = notificationService;
         _logger = logger;
@@ -32,9 +30,7 @@ public class ServerManagementService : IServerManagementService
     /// <inheritdoc/>
     public async Task<bool> StartServerAsync(Guid serverId)
     {
-        var server = await _context.GameServers
-            .Include(s => s.User)
-            .FirstOrDefaultAsync(s => s.Id == serverId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(serverId);
 
         if (server == null)
         {
@@ -93,9 +89,7 @@ public class ServerManagementService : IServerManagementService
     /// <inheritdoc/>
     public async Task<bool> StopServerAsync(Guid serverId)
     {
-        var server = await _context.GameServers
-            .Include(s => s.User)
-            .FirstOrDefaultAsync(s => s.Id == serverId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(serverId);
 
         if (server == null)
         {
@@ -147,9 +141,7 @@ public class ServerManagementService : IServerManagementService
     /// <inheritdoc/>
     public async Task<bool> RestartServerAsync(Guid serverId)
     {
-        var server = await _context.GameServers
-            .Include(s => s.User)
-            .FirstOrDefaultAsync(s => s.Id == serverId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(serverId);
 
         if (server == null)
         {
@@ -209,9 +201,7 @@ public class ServerManagementService : IServerManagementService
     /// <inheritdoc/>
     public async Task<bool> DeleteServerAsync(Guid serverId)
     {
-        var server = await _context.GameServers
-            .Include(s => s.User)
-            .FirstOrDefaultAsync(s => s.Id == serverId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(serverId);
 
         if (server == null)
         {
@@ -252,9 +242,7 @@ public class ServerManagementService : IServerManagementService
     /// <inheritdoc/>
     public async Task<bool> UpdateServerStatusAsync(Guid serverId, ServerStatus newStatus, string? reason = null)
     {
-        var server = await _context.GameServers
-            .Include(s => s.User)
-            .FirstOrDefaultAsync(s => s.Id == serverId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(serverId);
 
         if (server == null)
         {
@@ -285,7 +273,8 @@ public class ServerManagementService : IServerManagementService
                 break;
         }
 
-        await _context.SaveChangesAsync();
+        _unitOfWork.GameServers.Update(server);
+        await _unitOfWork.SaveChangesAsync();
 
         _logger.LogInformation(
             "Server {ServerId} status changed from {OldStatus} to {NewStatus}",
@@ -304,8 +293,7 @@ public class ServerManagementService : IServerManagementService
     /// <inheritdoc/>
     public async Task<ServerHealthStatus> CheckServerHealthAsync(Guid serverId)
     {
-        var server = await _context.GameServers
-            .FirstOrDefaultAsync(s => s.Id == serverId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(serverId);
 
         if (server == null)
         {
@@ -341,7 +329,8 @@ public class ServerManagementService : IServerManagementService
             server.LastHeartbeatAt = DateTime.UtcNow;
             server.HealthCheckStatus = healthStatus.IsHealthy ? "healthy" : "unhealthy";
             server.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            _unitOfWork.GameServers.Update(server);
+        await _unitOfWork.SaveChangesAsync();
 
             _logger.LogDebug(
                 "Health check for server {ServerId}: {IsHealthy}",
@@ -363,8 +352,7 @@ public class ServerManagementService : IServerManagementService
     /// <inheritdoc/>
     public async Task<ServerMetrics> GetServerMetricsAsync(Guid serverId)
     {
-        var server = await _context.GameServers
-            .FirstOrDefaultAsync(s => s.Id == serverId);
+        var server = await _unitOfWork.GameServers.GetByIdAsync(serverId);
 
         if (server == null)
         {

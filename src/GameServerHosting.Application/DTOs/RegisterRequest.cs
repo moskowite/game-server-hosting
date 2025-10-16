@@ -48,4 +48,10 @@ public class RegisterRequest
     [Required]
     [StringLength(50)]
     public string LastName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Acceptance of terms and conditions
+    /// </summary>
+    [Range(typeof(bool), "true", "true", ErrorMessage = "You must accept the terms and conditions")]
+    public bool AcceptTerms { get; set; }
 }
