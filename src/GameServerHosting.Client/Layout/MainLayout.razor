@@ -1,4 +1,7 @@
+@using GameServerHosting.Client.Services
 @inherits LayoutComponentBase
+@inject AppStateService AppState
+
 <div class="app-layout">
     <!-- Sidebar Navigation -->
     <aside class="app-sidebar">
@@ -36,25 +39,27 @@
 </div>
 
 <!-- Mobile Menu Overlay -->
-@if (showMobileMenu)
+@if (AppState.IsMobileMenuOpen)
 {
-    <div class="mobile-menu-overlay" @onclick="ToggleMobileMenu"></div>
+    <div class="mobile-menu-overlay" @onclick="() => AppState.ToggleMobileMenu()"></div>
 }
 
+<!-- Global Components -->
 <CartNotificationToast />
 <CartSidebar />
+<ToastNotification />
+<LoadingOverlay />
+<DevPanel />
 
 @code {
-    private bool showMobileMenu = false;
-
     private void ToggleMobileMenu()
     {
-        showMobileMenu = !showMobileMenu;
+        AppState.ToggleMobileMenu();
     }
 
     private string GetPageTitle()
     {
-        // This is a simple implementation - you might want to use NavigationManager to get actual page title
-        return "Dashboard";
+        // Get page title from AppState (can be set by individual pages)
+        return AppState.PageTitle;
     }
 }

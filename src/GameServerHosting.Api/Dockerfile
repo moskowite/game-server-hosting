@@ -2,6 +2,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build
 WORKDIR /src
 
+# Accept build configuration as argument (defaults to Release for production)
+ARG BUILD_CONFIGURATION=Development
+ENV BUILD_CONFIGURATION=${BUILD_CONFIGURATION}
+
 # Copy solution file and project files for layer caching
 COPY GameServerHosting.sln ./
 COPY src/GameServerHosting.Api/GameServerHosting.Api.csproj src/GameServerHosting.Api/
@@ -17,16 +21,19 @@ RUN dotnet restore src/GameServerHosting.Api/GameServerHosting.Api.csproj
 # Copy the rest of the source code
 COPY . .
 
-# Build the API project
+# Build the API project with dynamic configuration
 WORKDIR /src/src/GameServerHosting.Api
-RUN dotnet build GameServerHosting.Api.csproj -c Release -o /app/build
+RUN dotnet build GameServerHosting.Api.csproj -c ${BUILD_CONFIGURATION} -o /app/build
 
-# Publish the API project
-RUN dotnet publish GameServerHosting.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
+# Publish the API project with dynamic configuration
+RUN dotnet publish GameServerHosting.Api.csproj -c ${BUILD_CONFIGURATION} -o /app/publish /p:UseAppHost=false
 
 # Stage 2: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-bookworm-slim AS runtime
 WORKDIR /app
+
+# Re-declare ARG after FROM to make it available in this stage
+ARG BUILD_CONFIGURATION=Release
 
 # Update packages and install curl for healthcheck
 # This helps mitigate known vulnerabilities in base image
@@ -59,7 +66,8 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
 
 # Set environment variables
 ENV ASPNETCORE_URLS=http://+:8080
-ENV ASPNETCORE_ENVIRONMENT=Production
+# Set ASPNETCORE_ENVIRONMENT based on build configuration
+ENV ASPNETCORE_ENVIRONMENT=${BUILD_CONFIGURATION}
 
 # Run the application
 ENTRYPOINT ["dotnet", "GameServerHosting.Api.dll"]

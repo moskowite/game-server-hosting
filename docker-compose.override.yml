@@ -6,37 +6,37 @@ version: '3.8'
 
 services:
   api:
+    build:
+      context: .
+      dockerfile: src/GameServerHosting.Api/Dockerfile
+      args:
+        # Build with Development configuration
+        BUILD_CONFIGURATION: Development
     environment:
+      # Set environment to Development (loads appsettings.Development.json)
       ASPNETCORE_ENVIRONMENT: Development
-      # Development-specific CORS settings
-      Cors__AllowAnyLocalhostOrigin: "true"
-      # Detailed logging for development
-      Serilog__MinimumLevel__Default: "Debug"
-      Serilog__MinimumLevel__Override__Microsoft: "Information"
+      # Override connection string to use Docker container hostname instead of localhost
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=gameserverhosting_dev;Username=postgres;Password=postgres"
+      # Override other services to use Docker hostnames
+      RabbitMQ__Host: "rabbitmq"
+      EmailSettings__Smtp__Host: "maildev"
     volumes:
-      # Hot reload support - mount source code
-      - ./src/GameServerHosting.Api:/src/src/GameServerHosting.Api:ro
-      - ./src/GameServerHosting.Shared:/src/src/GameServerHosting.Shared:ro
       # Persist logs locally for debugging
       - ./logs/api:/app/logs
     ports:
       # Expose additional debug port
       - "5292:8080"
-      - "5293:5293"  # Debug port
-    # Override build for development (if needed, can rebuild with --build flag)
-    build:
-      context: .
-      dockerfile: src/GameServerHosting.Api/Dockerfile
-      # target: build  # Commented out - use runtime stage for proper app execution
+      - "5293:5293"  # Debug port (if needed)
 
   client:
-    environment:
-      # Development API endpoint (connects to local API container)
-      ApiSettings__BaseUrl: "http://localhost:5292"
-    # volumes:
-      # Note: Blazor WASM doesn't support hot reload via volume mounts
-      # The compiled output must be used, not the source wwwroot
-      # - ./src/GameServerHosting.Client/wwwroot:/usr/share/nginx/html:ro
+    build:
+      context: .
+      dockerfile: src/GameServerHosting.Client/Dockerfile
+      args:
+        # Use Development configuration to load appsettings.Development.json
+        BUILD_CONFIGURATION: Development
+    # Note: Environment variables don't work for Blazor WASM (client-side app)
+    # Configuration is baked into the build via appsettings.Development.json
     ports:
       - "5173:80"
 

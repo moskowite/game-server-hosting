@@ -3,6 +3,7 @@ using GameServerHosting.Application.DTOs;
 using GameServerHosting.Application.Interfaces;
 using GameServerHosting.Domain.Entities;
 using GameServerHosting.Infrastructure.Data;
+using GameServerHosting.Infrastructure.Data.Extensions;
 using GameServerHosting.Infrastructure.Jobs;
 using GameServerHosting.Infrastructure.Services;
 using GameServerHosting.Infrastructure.Consumers;
@@ -423,12 +424,16 @@ try
 
     var app = builder.Build();
 
-    // Seed the database with initial data
+    // Apply database migrations and seed initial data
     using (var scope = app.Services.CreateScope())
     {
         var services = scope.ServiceProvider;
         try
         {
+            // Apply any pending migrations first
+            await app.Services.EnsureDatabaseMigratedAsync();
+            
+            // Then seed the database with initial data
             var context = services.GetRequiredService<GameServerDbContext>();
             var logger = services.GetRequiredService<ILogger<DatabaseSeeder>>();
             var seeder = new DatabaseSeeder(context, logger);
@@ -437,7 +442,7 @@ try
         catch (Exception ex)
         {
             var logger = services.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "An error occurred while seeding the database");
+            logger.LogError(ex, "An error occurred while initializing the database");
         }
     }
 

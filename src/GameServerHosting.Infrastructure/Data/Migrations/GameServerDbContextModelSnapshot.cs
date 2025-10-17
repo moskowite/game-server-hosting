@@ -22,7 +22,304 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("GameServerHosting.Shared.Entities.GameServer", b =>
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.ApplicationUser", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("access_failed_count");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("text")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("email");
+
+                    b.Property<bool>("EmailConfirmed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("email_confirmed");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("first_name");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_login_at");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_name");
+
+                    b.Property<bool>("LockoutEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("lockout_enabled");
+
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lockout_end");
+
+                    b.Property<string>("NormalizedEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("normalized_email");
+
+                    b.Property<string>("NormalizedUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("normalized_username");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("text")
+                        .HasColumnName("password_hash");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("text")
+                        .HasColumnName("phone_number");
+
+                    b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("phone_number_confirmed");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("role");
+
+                    b.Property<string>("SecurityStamp")
+                        .HasColumnType("text")
+                        .HasColumnName("security_stamp");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("two_factor_enabled");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("username");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("idx_users_created_at");
+
+                    b.HasIndex("IsActive")
+                        .HasDatabaseName("idx_users_is_active");
+
+                    b.HasIndex("NormalizedEmail")
+                        .HasDatabaseName("EmailIndex");
+
+                    b.HasIndex("NormalizedUserName")
+                        .IsUnique()
+                        .HasDatabaseName("UserNameIndex");
+
+                    b.HasIndex("Role")
+                        .HasDatabaseName("idx_users_role");
+
+                    b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.AsyncOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<Guid>("CorrelationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("error_code");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text")
+                        .HasColumnName("error_message");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("metadata");
+
+                    b.Property<string>("OperationType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("operation_type");
+
+                    b.Property<int?>("ProgressPercentage")
+                        .HasColumnType("integer")
+                        .HasColumnName("progress_percentage");
+
+                    b.Property<Guid?>("ResourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resource_id");
+
+                    b.Property<string>("ResourceType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("resource_type");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("StatusMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("status_message");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CorrelationId")
+                        .IsUnique()
+                        .HasDatabaseName("idx_async_operations_correlation_id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("idx_async_operations_created_at");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("idx_async_operations_status");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("idx_async_operations_user_id");
+
+                    b.HasIndex("ResourceType", "ResourceId")
+                        .HasDatabaseName("idx_async_operations_resource");
+
+                    b.HasIndex("UserId", "Status")
+                        .HasDatabaseName("idx_async_operations_user_status");
+
+                    b.ToTable("async_operations", (string)null);
+                });
+
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.CartItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasDefaultValue("USD")
+                        .HasColumnName("currency");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("price");
+
+                    b.Property<int>("Quantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("ServerPlanId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("server_plan_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("idx_cart_items_created_at");
+
+                    b.HasIndex("ServerPlanId")
+                        .HasDatabaseName("idx_cart_items_server_plan_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("idx_cart_items_user_id");
+
+                    b.HasIndex("UserId", "ServerPlanId")
+                        .IsUnique()
+                        .HasDatabaseName("idx_cart_items_user_plan");
+
+                    b.ToTable("cart_items", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_cart_items_price", "price >= 0");
+
+                            t.HasCheckConstraint("ck_cart_items_quantity", "quantity > 0");
+                        });
+                });
+
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.GameServer", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -51,6 +348,11 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
+                    b.Property<string>("HealthCheckStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("health_check_status");
+
                     b.Property<string>("IpAddress")
                         .HasMaxLength(45)
                         .HasColumnType("character varying(45)")
@@ -64,6 +366,33 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("port");
 
+                    b.Property<string>("ProviderId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("provider_id");
+
+                    b.Property<string>("ProviderRegion")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("provider_region");
+
+                    b.Property<string>("ProviderType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("provider_type");
+
+                    b.Property<DateTime?>("ProvisioningCompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("provisioning_completed_at");
+
+                    b.Property<string>("ProvisioningError")
+                        .HasColumnType("text")
+                        .HasColumnName("provisioning_error");
+
+                    b.Property<DateTime?>("ProvisioningStartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("provisioning_started_at");
+
                     b.Property<string>("ServerName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -73,6 +402,14 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
                     b.Property<Guid>("ServerTypeId")
                         .HasColumnType("uuid")
                         .HasColumnName("server_type_id");
+
+                    b.Property<string>("SshKeyPrivate")
+                        .HasColumnType("text")
+                        .HasColumnName("ssh_key_private");
+
+                    b.Property<string>("SshKeyPublic")
+                        .HasColumnType("text")
+                        .HasColumnName("ssh_key_public");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -131,7 +468,60 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
                         });
                 });
 
-            modelBuilder.Entity("GameServerHosting.Shared.Entities.Order", b =>
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.IdempotencyKey", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("RequestType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("request_type");
+
+                    b.Property<Guid?>("ResourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resource_id");
+
+                    b.Property<string>("ResponseBody")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("response_body");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_code");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Key");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("idx_idempotency_keys_expires_at");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("idx_idempotency_keys_user_id");
+
+                    b.HasIndex("UserId", "RequestType")
+                        .HasDatabaseName("idx_idempotency_keys_user_request");
+
+                    b.ToTable("idempotency_keys", (string)null);
+                });
+
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.Order", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -251,7 +641,68 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
                         });
                 });
 
-            modelBuilder.Entity("GameServerHosting.Shared.Entities.Payment", b =>
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("uuid_generate_v4()");
+
+                    b.Property<Guid?>("CorrelationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text")
+                        .HasColumnName("error");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("event_type");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.Property<int>("ProcessingAttempts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("processing_attempts");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CorrelationId")
+                        .HasDatabaseName("idx_outbox_messages_correlation_id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("idx_outbox_messages_created_at");
+
+                    b.HasIndex("ProcessedAt")
+                        .HasDatabaseName("idx_outbox_messages_processed_at");
+
+                    b.HasIndex("ProcessedAt", "CreatedAt")
+                        .HasDatabaseName("idx_outbox_messages_pending")
+                        .HasFilter("processed_at IS NULL");
+
+                    b.ToTable("outbox_messages", (string)null);
+                });
+
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.Payment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -404,7 +855,7 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
                         });
                 });
 
-            modelBuilder.Entity("GameServerHosting.Shared.Entities.ServerPlan", b =>
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.ServerPlan", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -509,7 +960,7 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
                         });
                 });
 
-            modelBuilder.Entity("GameServerHosting.Shared.Entities.ServerType", b =>
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.ServerType", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -533,6 +984,11 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
                         .HasColumnType("jsonb")
                         .HasDefaultValue("{}")
                         .HasColumnName("default_config");
+
+                    b.Property<string>("DefaultVersion")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("default_version");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -620,7 +1076,7 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
                         });
                 });
 
-            modelBuilder.Entity("GameServerHosting.Shared.Entities.User", b =>
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.UserPreferences", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -634,50 +1090,59 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("email");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("first_name");
-
-                    b.Property<bool>("IsActive")
+                    b.Property<bool>("EmailNewsletter")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(true)
-                        .HasColumnName("is_active");
+                        .HasColumnName("email_newsletter");
 
-                    b.Property<DateTime?>("LastLoginAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_login_at");
+                    b.Property<bool>("EmailOrderUpdates")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("email_order_updates");
 
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("last_name");
+                    b.Property<bool>("EmailPromotional")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("email_promotional");
 
-                    b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("password_hash");
+                    b.Property<bool>("EmailServerAlerts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("email_server_alerts");
 
-                    b.Property<string>("PhoneNumber")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("phone_number");
+                    b.Property<bool>("NotificationsBrowser")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("notifications_browser");
 
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("role");
+                    b.Property<bool>("NotificationsPaymentDue")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("notifications_payment_due");
+
+                    b.Property<bool>("NotificationsResourceAlerts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("notifications_resource_alerts");
+
+                    b.Property<bool>("NotificationsSecurityAlerts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("notifications_security_alerts");
+
+                    b.Property<bool>("NotificationsServerOffline")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("notifications_server_offline");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
@@ -685,43 +1150,210 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("username");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedAt")
-                        .HasDatabaseName("idx_users_created_at");
-
-                    b.HasIndex("Email")
+                    b.HasIndex("UserId")
                         .IsUnique()
-                        .HasDatabaseName("idx_users_email");
+                        .HasDatabaseName("idx_user_preferences_user_id");
 
-                    b.HasIndex("IsActive")
-                        .HasDatabaseName("idx_users_is_active");
-
-                    b.HasIndex("Role")
-                        .HasDatabaseName("idx_users_role");
-
-                    b.HasIndex("Username")
-                        .IsUnique()
-                        .HasDatabaseName("idx_users_username");
-
-                    b.ToTable("users", (string)null);
+                    b.ToTable("user_preferences", (string)null);
                 });
 
-            modelBuilder.Entity("GameServerHosting.Shared.Entities.GameServer", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
                 {
-                    b.HasOne("GameServerHosting.Shared.Entities.ServerType", "ServerType")
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("text")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("NormalizedName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("normalized_name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("RoleNameIndex");
+
+                    b.ToTable("roles", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClaimType")
+                        .HasColumnType("text")
+                        .HasColumnName("claim_type");
+
+                    b.Property<string>("ClaimValue")
+                        .HasColumnType("text")
+                        .HasColumnName("claim_value");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("role_claims", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClaimType")
+                        .HasColumnType("text")
+                        .HasColumnName("claim_type");
+
+                    b.Property<string>("ClaimValue")
+                        .HasColumnType("text")
+                        .HasColumnName("claim_value");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("user_claims", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
+                {
+                    b.Property<string>("LoginProvider")
+                        .HasColumnType("text")
+                        .HasColumnName("login_provider");
+
+                    b.Property<string>("ProviderKey")
+                        .HasColumnType("text")
+                        .HasColumnName("provider_key");
+
+                    b.Property<string>("ProviderDisplayName")
+                        .HasColumnType("text")
+                        .HasColumnName("provider_display_name");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("LoginProvider", "ProviderKey");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("user_logins", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
+
+                    b.HasKey("UserId", "RoleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("user_roles", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("LoginProvider")
+                        .HasColumnType("text")
+                        .HasColumnName("login_provider");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Value")
+                        .HasColumnType("text")
+                        .HasColumnName("value");
+
+                    b.HasKey("UserId", "LoginProvider", "Name");
+
+                    b.ToTable("user_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.AsyncOperation", b =>
+                {
+                    b.HasOne("GameServerHosting.Domain.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.CartItem", b =>
+                {
+                    b.HasOne("GameServerHosting.Domain.Entities.ServerPlan", "ServerPlan")
+                        .WithMany()
+                        .HasForeignKey("ServerPlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GameServerHosting.Domain.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ServerPlan");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.GameServer", b =>
+                {
+                    b.HasOne("GameServerHosting.Domain.Entities.ServerType", "ServerType")
                         .WithMany("GameServers")
                         .HasForeignKey("ServerTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("GameServerHosting.Shared.Entities.User", "User")
+                    b.HasOne("GameServerHosting.Domain.Entities.ApplicationUser", "User")
                         .WithMany("GameServers")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -732,19 +1364,19 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("GameServerHosting.Shared.Entities.Order", b =>
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.Order", b =>
                 {
-                    b.HasOne("GameServerHosting.Shared.Entities.GameServer", "GameServer")
+                    b.HasOne("GameServerHosting.Domain.Entities.GameServer", "GameServer")
                         .WithMany("Orders")
                         .HasForeignKey("ServerId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("GameServerHosting.Shared.Entities.ServerPlan", "ServerPlan")
+                    b.HasOne("GameServerHosting.Domain.Entities.ServerPlan", "ServerPlan")
                         .WithMany("Orders")
                         .HasForeignKey("ServerPlanId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("GameServerHosting.Shared.Entities.User", "User")
+                    b.HasOne("GameServerHosting.Domain.Entities.ApplicationUser", "User")
                         .WithMany("Orders")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -757,15 +1389,15 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("GameServerHosting.Shared.Entities.Payment", b =>
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.Payment", b =>
                 {
-                    b.HasOne("GameServerHosting.Shared.Entities.Order", "Order")
+                    b.HasOne("GameServerHosting.Domain.Entities.Order", "Order")
                         .WithMany("Payments")
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("GameServerHosting.Shared.Entities.User", "User")
+                    b.HasOne("GameServerHosting.Domain.Entities.ApplicationUser", "User")
                         .WithMany("Payments")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -776,9 +1408,9 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("GameServerHosting.Shared.Entities.ServerPlan", b =>
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.ServerPlan", b =>
                 {
-                    b.HasOne("GameServerHosting.Shared.Entities.ServerType", "ServerType")
+                    b.HasOne("GameServerHosting.Domain.Entities.ServerType", "ServerType")
                         .WithMany("ServerPlans")
                         .HasForeignKey("ServerTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -787,35 +1419,97 @@ namespace GameServerHosting.Infrastructure.Data.Migrations
                     b.Navigation("ServerType");
                 });
 
-            modelBuilder.Entity("GameServerHosting.Shared.Entities.GameServer", b =>
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.UserPreferences", b =>
+                {
+                    b.HasOne("GameServerHosting.Domain.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
+                {
+                    b.HasOne("GameServerHosting.Domain.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
+                {
+                    b.HasOne("GameServerHosting.Domain.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("GameServerHosting.Domain.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
+                {
+                    b.HasOne("GameServerHosting.Domain.Entities.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.ApplicationUser", b =>
+                {
+                    b.Navigation("GameServers");
+
+                    b.Navigation("Orders");
+
+                    b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.GameServer", b =>
                 {
                     b.Navigation("Orders");
                 });
 
-            modelBuilder.Entity("GameServerHosting.Shared.Entities.Order", b =>
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.Order", b =>
                 {
                     b.Navigation("Payments");
                 });
 
-            modelBuilder.Entity("GameServerHosting.Shared.Entities.ServerPlan", b =>
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.ServerPlan", b =>
                 {
                     b.Navigation("Orders");
                 });
 
-            modelBuilder.Entity("GameServerHosting.Shared.Entities.ServerType", b =>
+            modelBuilder.Entity("GameServerHosting.Domain.Entities.ServerType", b =>
                 {
                     b.Navigation("GameServers");
 
                     b.Navigation("ServerPlans");
-                });
-
-            modelBuilder.Entity("GameServerHosting.Shared.Entities.User", b =>
-                {
-                    b.Navigation("GameServers");
-
-                    b.Navigation("Orders");
-
-                    b.Navigation("Payments");
                 });
 #pragma warning restore 612, 618
         }

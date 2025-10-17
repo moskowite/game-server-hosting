@@ -2,6 +2,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS build
 WORKDIR /src
 
+# Accept build configuration as argument (defaults to Release for production)
+ARG BUILD_CONFIGURATION=Development
+ENV BUILD_CONFIGURATION=${BUILD_CONFIGURATION}
+
 # Copy solution file and project files for layer caching
 COPY GameServerHosting.sln ./
 COPY src/GameServerHosting.Api/GameServerHosting.Api.csproj src/GameServerHosting.Api/
@@ -16,9 +20,17 @@ RUN dotnet restore src/GameServerHosting.Client/GameServerHosting.Client.csproj
 # Copy the rest of the source code
 COPY . .
 
-# Build and publish the Client project
+# Build and publish the Client project with dynamic configuration
 WORKDIR /src/src/GameServerHosting.Client
-RUN dotnet publish GameServerHosting.Client.csproj -c Release -o /app/publish
+RUN dotnet publish GameServerHosting.Client.csproj \
+    -c ${BUILD_CONFIGURATION} \
+    -o /app/publish
+
+# Copy environment-specific appsettings over the default one
+RUN if [ "${BUILD_CONFIGURATION}" = "Development" ]; then \
+        echo "Using Development configuration..."; \
+        cp /app/publish/wwwroot/appsettings.Development.json /app/publish/wwwroot/appsettings.json; \
+    fi
 
 # Stage 2: Serve with nginx
 FROM nginx:alpine AS runtime

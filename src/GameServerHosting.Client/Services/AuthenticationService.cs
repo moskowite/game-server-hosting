@@ -4,6 +4,7 @@ using GameServerHosting.Application.DTOs;
 using GameServerHosting.Client.Models;
 using GameServerHosting.Client.Models.Auth;
 using Microsoft.JSInterop;
+using Microsoft.Extensions.Logging;
 
 namespace GameServerHosting.Client.Services;
 
@@ -13,6 +14,7 @@ namespace GameServerHosting.Client.Services;
 public class AuthenticationService
 {
     private readonly HttpClient _httpClient;
+    private readonly ILogger<AuthenticationService> _logger;
     private readonly IJSRuntime _jsRuntime;
     private AuthState _authState = new();
     private const string AccessTokenKey = "accessToken";
@@ -21,10 +23,11 @@ public class AuthenticationService
 
     public event Action<AuthStateChangedEventArgs>? OnAuthStateChanged;
 
-    public AuthenticationService(HttpClient httpClient, IJSRuntime jsRuntime)
+    public AuthenticationService(HttpClient httpClient, IJSRuntime jsRuntime, ILogger<AuthenticationService> logger)
     {
         _httpClient = httpClient;
         _jsRuntime = jsRuntime;
+        _logger = logger;
     }
 
     /// <summary>
@@ -44,38 +47,92 @@ public class AuthenticationService
     {
         try
         {
+            _logger.LogInformation("Starting authentication service initialization");
+
             var accessToken = await GetFromLocalStorageAsync(AccessTokenKey);
             var refreshToken = await GetFromLocalStorageAsync(RefreshTokenKey);
             var userStateJson = await GetFromLocalStorageAsync(UserStateKey);
 
+            _logger.LogDebug("Retrieved tokens from localStorage: AccessToken={HasValue}, RefreshToken={HasValue}, UserState={HasValue}",
+                !string.IsNullOrEmpty(accessToken), !string.IsNullOrEmpty(refreshToken), !string.IsNullOrEmpty(userStateJson));
+
             if (!string.IsNullOrEmpty(accessToken) && !string.IsNullOrEmpty(userStateJson))
             {
-                var userState = JsonSerializer.Deserialize<AuthState>(userStateJson);
-                if (userState != null)
+                try
                 {
-                    _authState = userState;
-                    _authState.AccessToken = accessToken;
-                    _authState.RefreshToken = refreshToken;
-
-                    // Check if token is expired
-                    if (_authState.TokenExpiresAt.HasValue && _authState.TokenExpiresAt.Value <= DateTime.UtcNow)
+                    var userState = JsonSerializer.Deserialize<AuthState>(userStateJson);
+                    if (userState != null)
                     {
-                        // Try to refresh token
-                        var refreshed = await RefreshTokenAsync();
-                        if (!refreshed)
+                        _authState = userState;
+                        _authState.AccessToken = accessToken;
+                        _authState.RefreshToken = refreshToken;
+
+                        _logger.LogInformation("Loaded authentication state for user: {UserName}", userState.UserName);
+
+                        // Check if token is expired
+                        if (_authState.TokenExpiresAt.HasValue && _authState.TokenExpiresAt.Value <= DateTime.UtcNow)
                         {
-                            await LogoutAsync();
+                            _logger.LogInformation("Access token is expired, attempting to refresh");
+
+                            // Try to refresh token with timeout to prevent hanging
+                            try
+                            {
+                                var refreshTask = RefreshTokenAsync();
+                                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));
+
+                                var completedTask = await Task.WhenAny(refreshTask, timeoutTask);
+                                if (completedTask == timeoutTask)
+                                {
+                                    _logger.LogWarning("Token refresh timed out after 5 seconds");
+                                    // Refresh timed out, logout to clear invalid state
+                                    await LogoutAsync();
+                                    return;
+                                }
+
+                                var refreshed = await refreshTask;
+                                if (refreshed)
+                                {
+                                    _logger.LogInformation("Token refreshed successfully");
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("Token refresh failed");
+                                    await LogoutAsync();
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Error during token refresh");
+                                // If refresh fails, logout to clear invalid state
+                                await LogoutAsync();
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Access token is still valid");
+                            NotifyAuthStateChanged();
                         }
                     }
                     else
                     {
-                        NotifyAuthStateChanged();
+                        _logger.LogWarning("Failed to deserialize user state from localStorage");
+                        await LogoutAsync();
                     }
                 }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Failed to deserialize authentication state");
+                    await LogoutAsync();
+                }
+            }
+            else
+            {
+                _logger.LogInformation("No valid authentication tokens found, user is not logged in");
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Critical error during authentication service initialization");
             // If initialization fails, ensure user is logged out
             await LogoutAsync();
         }
@@ -178,11 +235,19 @@ public class AuthenticationService
             var refreshToken = _authState.RefreshToken;
             if (string.IsNullOrEmpty(refreshToken))
             {
+                _logger.LogWarning("Refresh token is null or empty");
                 return false;
             }
 
             var request = new RefreshTokenRequest { RefreshToken = refreshToken };
-            var response = await _httpClient.PostAsJsonAsync("/api/auth/refresh-token", request);
+
+            // Create request with manual authentication handling
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/auth/refresh-token")
+            {
+                Content = JsonContent.Create(request)
+            };
+
+            var response = await _httpClient.SendAsync(httpRequest);
 
             if (response.IsSuccessStatusCode)
             {
@@ -190,14 +255,24 @@ public class AuthenticationService
                 if (authResponse != null)
                 {
                     await SetAuthenticationStateAsync(authResponse);
+                    _logger.LogInformation("Token refreshed successfully");
                     return true;
                 }
+                else
+                {
+                    _logger.LogWarning("Auth response was null after successful refresh");
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Token refresh failed with status code: {StatusCode}", response.StatusCode);
             }
 
             return false;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Error occurred during token refresh");
             return false;
         }
     }
