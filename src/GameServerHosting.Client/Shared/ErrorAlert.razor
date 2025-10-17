@@ -1,0 +1,77 @@
+@* Reusable error alert component *@
+
+@if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="alert alert-@Severity.ToString().ToLower() @(Dismissible ? "alert-dismissible" : "")" role="alert">
+        <div class="alert-content">
+            <span class="alert-icon bi bi-@IconClass"></span>
+            <div class="alert-body">
+                @if (!string.IsNullOrEmpty(Title))
+                {
+                    <h4 class="alert-title">@Title</h4>
+                }
+                <p class="alert-message">@ErrorMessage</p>
+                @if (Details != null && ShowDetails)
+                {
+                    <details class="alert-details">
+                        <summary>Show details</summary>
+                        <pre>@Details</pre>
+                    </details>
+                }
+            </div>
+        </div>
+        @if (Dismissible)
+        {
+            <button type="button" class="alert-close" @onclick="Dismiss" aria-label="Close">
+                <span class="bi bi-x"></span>
+            </button>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public string? Details { get; set; }
+
+    [Parameter]
+    public AlertSeverity Severity { get; set; } = AlertSeverity.Error;
+
+    [Parameter]
+    public bool Dismissible { get; set; } = true;
+
+    [Parameter]
+    public bool ShowDetails { get; set; } = false;
+
+    [Parameter]
+    public EventCallback OnDismiss { get; set; }
+
+    private string IconClass => Severity switch
+    {
+        AlertSeverity.Error => "exclamation-circle-fill",
+        AlertSeverity.Warning => "exclamation-triangle-fill",
+        AlertSeverity.Info => "info-circle-fill",
+        AlertSeverity.Success => "check-circle-fill",
+        _ => "info-circle-fill"
+    };
+
+    private async Task Dismiss()
+    {
+        ErrorMessage = null;
+        await OnDismiss.InvokeAsync();
+    }
+
+    public enum AlertSeverity
+    {
+        Error,
+        Warning,
+        Info,
+        Success
+    }
+}
+

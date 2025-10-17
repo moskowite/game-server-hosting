@@ -1,0 +1,151 @@
+@using GameServerHosting.Client.Services
+@inject DevToolsService DevTools
+@inject AppStateService AppState
+@implements IDisposable
+
+@* Only show in development mode *@
+@if (DevTools.IsDevelopment && isVisible)
+{
+    <div class="dev-panel">
+        <div class="dev-panel-header">
+            <h3 class="dev-panel-title">
+                <span class="bi bi-code-slash"></span>
+                Dev Tools
+            </h3>
+            <div class="dev-panel-actions">
+                <button class="dev-panel-btn" @onclick="ToggleMinimize" title="@(isMinimized ? "Expand" : "Minimize")">
+                    <span class="bi bi-@(isMinimized ? "arrows-angle-expand" : "dash")"></span>
+                </button>
+                <button class="dev-panel-btn" @onclick="TogglePanel" title="Close">
+                    <span class="bi bi-x"></span>
+                </button>
+            </div>
+        </div>
+
+        @if (!isMinimized)
+        {
+            <div class="dev-panel-body">
+                <!-- App State Section -->
+                <div class="dev-section">
+                    <h4 class="dev-section-title">App State</h4>
+                    <div class="dev-info-grid">
+                        <div class="dev-info-item">
+                            <span class="dev-info-label">Loading:</span>
+                            <span class="dev-info-value">@(AppState.IsLoading ? "Yes" : "No")</span>
+                        </div>
+                        <div class="dev-info-item">
+                            <span class="dev-info-label">Mobile Menu:</span>
+                            <span class="dev-info-value">@(AppState.IsMobileMenuOpen ? "Open" : "Closed")</span>
+                        </div>
+                        <div class="dev-info-item">
+                            <span class="dev-info-label">Page Title:</span>
+                            <span class="dev-info-value">@AppState.PageTitle</span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(AppState.GlobalError))
+                        {
+                            <div class="dev-info-item full-width">
+                                <span class="dev-info-label">Error:</span>
+                                <span class="dev-info-value error">@AppState.GlobalError</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Performance Section -->
+                <div class="dev-section">
+                    <h4 class="dev-section-title">Performance</h4>
+                    <div class="dev-info-grid">
+                        <div class="dev-info-item">
+                            <span class="dev-info-label">Memory:</span>
+                            <span class="dev-info-value">@memoryUsage MB</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="dev-section">
+                    <h4 class="dev-section-title">Quick Actions</h4>
+                    <div class="dev-actions">
+                        <button class="dev-action-btn" @onclick="ClearError">
+                            <span class="bi bi-x-circle"></span>
+                            Clear Error
+                        </button>
+                        <button class="dev-action-btn" @onclick="ClearConsole">
+                            <span class="bi bi-terminal"></span>
+                            Clear Console
+                        </button>
+                        <button class="dev-action-btn" @onclick="RefreshMemory">
+                            <span class="bi bi-arrow-clockwise"></span>
+                            Refresh Stats
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Toggle Button (when panel is hidden) -->
+    </div>
+}
+else if (DevTools.IsDevelopment)
+{
+    <button class="dev-panel-toggle" @onclick="TogglePanel" title="Open Dev Tools">
+        <span class="bi bi-code-slash"></span>
+    </button>
+}
+
+@code {
+    private bool isVisible = false;
+    private bool isMinimized = false;
+    private double memoryUsage = 0;
+    private Timer? _refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (DevTools.IsDevelopment)
+        {
+            await DevTools.EnableBrowserLogging();
+            await RefreshMemory();
+
+            // Auto-refresh memory every 5 seconds
+            _refreshTimer = new Timer(async _ =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    await RefreshMemory();
+                    StateHasChanged();
+                });
+            }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+        }
+    }
+
+    private void TogglePanel()
+    {
+        isVisible = !isVisible;
+    }
+
+    private void ToggleMinimize()
+    {
+        isMinimized = !isMinimized;
+    }
+
+    private void ClearError()
+    {
+        AppState.ClearError();
+    }
+
+    private async Task ClearConsole()
+    {
+        await DevTools.ClearConsole();
+    }
+
+    private async Task RefreshMemory()
+    {
+        memoryUsage = Math.Round(await DevTools.GetMemoryUsageMB(), 2);
+    }
+
+    public void Dispose()
+    {
+        _refreshTimer?.Dispose();
+    }
+}
+

@@ -1,0 +1,33 @@
+@using GameServerHosting.Client.Services
+@inject AppStateService AppState
+@implements IDisposable
+
+@if (AppState.IsLoading || isLocalLoading)
+{
+    <div class="loading-overlay">
+        <div class="loading-overlay-content">
+            <LoadingSpinner Message="@(LoadingMessage ?? "Loading...")" Size="LoadingSpinner.LoadingSize.Large" />
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public string? LoadingMessage { get; set; }
+
+    private bool isLocalLoading => IsLoading;
+
+    protected override void OnInitialized()
+    {
+        AppState.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        AppState.OnChange -= StateHasChanged;
+    }
+}
+

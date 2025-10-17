@@ -1,0 +1,132 @@
+@using GameServerHosting.Client.Services
+@inject AppStateService AppState
+@implements IDisposable
+
+<div class="toast-container">
+    @foreach (var toast in _toasts)
+    {
+        <div class="toast toast-@toast.Type.ToString().ToLower() @(toast.IsVisible ? "show" : "")">
+            <div class="toast-header">
+                <span class="toast-icon bi bi-@GetIcon(toast.Type)"></span>
+                <strong class="toast-title">@toast.Title</strong>
+                <button type="button" class="toast-close" @onclick="() => RemoveToast(toast.Id)">
+                    <span class="bi bi-x"></span>
+                </button>
+            </div>
+            @if (!string.IsNullOrEmpty(toast.Message))
+            {
+                <div class="toast-body">
+                    @toast.Message
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<ToastModel> _toasts = new();
+    private int _nextId = 1;
+
+    protected override void OnInitialized()
+    {
+        AppState.OnNotification += ShowNotification;
+        AppState.OnError += ShowError;
+    }
+
+    private void ShowNotification(string message)
+    {
+        AddToast("Notification", message, ToastType.Info);
+    }
+
+    private void ShowError(string title, string message)
+    {
+        AddToast(title, message, ToastType.Error);
+    }
+
+    private void AddToast(string title, string message, ToastType type, int durationMs = 5000)
+    {
+        var toast = new ToastModel
+        {
+            Id = _nextId++,
+            Title = title,
+            Message = message,
+            Type = type,
+            IsVisible = false
+        };
+
+        _toasts.Add(toast);
+        StateHasChanged();
+
+        // Trigger animation after a tiny delay
+        _ = Task.Delay(10).ContinueWith(_ =>
+        {
+            InvokeAsync(() =>
+            {
+                toast.IsVisible = true;
+                StateHasChanged();
+            });
+        });
+
+        // Auto-remove after duration
+        if (type != ToastType.Error) // Errors stay until dismissed
+        {
+            _ = Task.Delay(durationMs).ContinueWith(_ =>
+            {
+                InvokeAsync(() => RemoveToast(toast.Id));
+            });
+        }
+    }
+
+    private void RemoveToast(int id)
+    {
+        var toast = _toasts.FirstOrDefault(t => t.Id == id);
+        if (toast != null)
+        {
+            toast.IsVisible = false;
+            StateHasChanged();
+
+            // Remove from list after animation
+            _ = Task.Delay(300).ContinueWith(_ =>
+            {
+                InvokeAsync(() =>
+                {
+                    _toasts.Remove(toast);
+                    StateHasChanged();
+                });
+            });
+        }
+    }
+
+    private string GetIcon(ToastType type) => type switch
+    {
+        ToastType.Success => "check-circle-fill",
+        ToastType.Error => "exclamation-circle-fill",
+        ToastType.Warning => "exclamation-triangle-fill",
+        ToastType.Info => "info-circle-fill",
+        _ => "info-circle-fill"
+    };
+
+    public void Dispose()
+    {
+        AppState.OnNotification -= ShowNotification;
+        AppState.OnError -= ShowError;
+    }
+
+    private class ToastModel
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public ToastType Type { get; set; }
+        public bool IsVisible { get; set; }
+    }
+
+    private enum ToastType
+    {
+        Success,
+        Error,
+        Warning,
+        Info
+    }
+}
+

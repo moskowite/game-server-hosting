@@ -1,0 +1,83 @@
+@using Microsoft.AspNetCore.Components.Web
+@inherits ErrorBoundaryBase
+@inject ILogger<AppErrorBoundary> Logger
+@inject NavigationManager NavManager
+
+<div class="error-boundary">
+    @if (CurrentException is null)
+    {
+        @ChildContent
+    }
+    else
+    {
+        <div class="error-container">
+            <div class="error-icon">
+                <span class="bi bi-exclamation-triangle-fill"></span>
+            </div>
+            <h2 class="error-title">Oops! Something went wrong</h2>
+            <p class="error-message">
+                @if (IsDevelopment)
+                {
+                    <text>@CurrentException.Message</text>
+                }
+                else
+                {
+                    <text>We're sorry, but an unexpected error occurred. Please try refreshing the page.</text>
+                }
+            </p>
+            <div class="error-actions">
+                <button class="btn btn-primary" @onclick="RecoverError">
+                    <span class="bi bi-arrow-clockwise"></span>
+                    Try Again
+                </button>
+                <button class="btn btn-outline-primary" @onclick="ReloadPage">
+                    <span class="bi bi-arrow-repeat"></span>
+                    Reload Page
+                </button>
+            </div>
+            @if (IsDevelopment && CurrentException is not null)
+            {
+                <details class="error-details">
+                    <summary>Technical Details (Development Only)</summary>
+                    <div class="error-stack">
+                        <h4>Exception Type:</h4>
+                        <pre>@CurrentException.GetType().FullName</pre>
+                        <h4>Stack Trace:</h4>
+                        <pre>@CurrentException.StackTrace</pre>
+                        @if (CurrentException.InnerException is not null)
+                        {
+                            <h4>Inner Exception:</h4>
+                            <pre>@CurrentException.InnerException.Message</pre>
+                            <pre>@CurrentException.InnerException.StackTrace</pre>
+                        }
+                    </div>
+                </details>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public bool IsDevelopment { get; set; } = true;
+
+    protected override Task OnErrorAsync(Exception exception)
+    {
+        Logger.LogError(exception, "Error boundary caught exception");
+        return Task.CompletedTask;
+    }
+
+    private void RecoverError()
+    {
+        Logger.LogInformation("User clicked Recover button");
+        base.Recover();
+    }
+
+    private void ReloadPage()
+    {
+        Logger.LogInformation("User clicked Reload Page button");
+        // Note: This will trigger a full page reload
+        NavManager.NavigateTo("/", forceLoad: true);
+    }
+}
+

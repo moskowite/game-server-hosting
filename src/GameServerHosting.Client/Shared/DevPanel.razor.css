@@ -1,0 +1,186 @@
+.dev-panel {
+    position: fixed;
+    bottom: var(--spacing-4);
+    right: var(--spacing-4);
+    width: 400px;
+    max-height: 600px;
+    background: var(--bg-elevated);
+    border: 2px solid var(--color-primary-500);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    z-index: var(--z-modal);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dev-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-3) var(--spacing-4);
+    background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-secondary-600) 100%);
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.dev-panel-title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    margin: 0;
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    color: white;
+}
+
+.dev-panel-actions {
+    display: flex;
+    gap: var(--spacing-2);
+}
+
+.dev-panel-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: var(--font-size-lg);
+    cursor: pointer;
+    padding: var(--spacing-1);
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.dev-panel-btn:hover {
+    opacity: 1;
+}
+
+.dev-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-4);
+}
+
+.dev-section {
+    margin-bottom: var(--spacing-4);
+}
+
+.dev-section:last-child {
+    margin-bottom: 0;
+}
+
+.dev-section-title {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 var(--spacing-3) 0;
+}
+
+.dev-info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-2);
+}
+
+.dev-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+    padding: var(--spacing-2);
+    background: var(--bg-primary);
+    border-radius: var(--radius-md);
+}
+
+.dev-info-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.dev-info-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-medium);
+}
+
+.dev-info-value {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    font-weight: var(--font-weight-semibold);
+}
+
+.dev-info-value.error {
+    color: var(--color-error);
+    word-break: break-word;
+}
+
+.dev-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
+}
+
+.dev-action-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding: var(--spacing-2) var(--spacing-3);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.dev-action-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--color-primary-500);
+    color: var(--color-primary-400);
+}
+
+.dev-panel-toggle {
+    position: fixed;
+    bottom: var(--spacing-4);
+    right: var(--spacing-4);
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-secondary-600) 100%);
+    border: 2px solid var(--color-primary-500);
+    border-radius: 50%;
+    color: white;
+    font-size: var(--font-size-xl);
+    cursor: pointer;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s;
+    z-index: var(--z-modal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dev-panel-toggle:hover {
+    transform: scale(1.1);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+    .dev-panel {
+        left: var(--spacing-4);
+        right: var(--spacing-4);
+        width: auto;
+    }
+}
+

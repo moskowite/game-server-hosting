@@ -1,0 +1,13 @@
+---
+alwaysApply: true
+---
+Layering and placement: Put DTOs under GameServerHosting.Application/DTOs; no DTOs in Client. Domain entities/enums live in Domain; EF/repositories/migrations in Infrastructure; controllers only in Api.
+Data access: Use IUnitOfWork/IRepository<T> everywhere outside Infrastructure. Do not inject or use GameServerDbContext directly in controllers/services.
+Blazor startup and errors: Initialize AuthenticationService in App.razor OnAfterRenderAsync (firstRender). Use <AppErrorBoundary> (not the built-in name) and do not customize Blazor autostart in index.html.
+Environment/config: Client API base URL comes from wwwroot/appsettings.json baked at build; in Docker dev use http://api:8080/. API uses ASPNETCORE_ENVIRONMENT and appsettings.{Environment}.json. Never hardcode production URLs in dev.
+Docker rules: Build both images with BUILD_CONFIGURATION arg. Don’t mount Client/wwwroot over published output. Health checks use 127.0.0.1. The client must not run Docker; all container ops go through the API/worker.
+Migrations: Any schema change → add EF migration in Infrastructure, keep EnsureDatabaseMigratedAsync() in API startup, and keep database-schema.sql (if used) in sync. Ensure PostgreSQL uuid-ossp is enabled.
+StyleCop/compliance: Fix SA1028 (no trailing whitespace), SA1208 (System usings first), SA1402 (one type per file), and related warnings before merge.
+Shared types/enums: Use GameServerHosting.Domain.Enums everywhere; avoid duplicate/ambiguous enums or DTOs in Client/Models. Prefer Application project references over re-declaring types.
+Secrets/background work: Stripe keys and other secrets via environment variables only. Long-running work (provisioning, emails, etc.) via Quartz/MassTransit/outbox, not in controllers.
+Auth robustness: Register AuthenticationService as scoped; add a 5s timeout when refreshing tokens; on refresh failure, logout and continue app load; client HTTP calls must not block the UI.

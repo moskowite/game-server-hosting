@@ -18,21 +18,24 @@ var stripeSettings = builder.Configuration.GetSection("Stripe").Get<StripeSettin
     ?? new StripeSettings();
 builder.Services.AddSingleton(stripeSettings);
 
-// Register AuthenticationService as singleton so it persists across components
-builder.Services.AddSingleton<AuthenticationService>();
+// Register AuthenticationService as scoped since it depends on HttpClient
+// Note: IJSRuntime is also scoped in Blazor WASM
+builder.Services.AddScoped<AuthenticationService>();
 
-// Configure HttpClient with authentication handler
-builder.Services.AddScoped<AuthenticatedHttpMessageHandler>();
+// Register AppStateService as singleton for global state management
+builder.Services.AddSingleton<AppStateService>();
+
+// Register DevToolsService for better development experience
+builder.Services.AddSingleton<DevToolsService>();
+
+// Configure HttpClient for API communication
 builder.Services.AddScoped(sp =>
 {
-    var authHandler = sp.GetRequiredService<AuthenticatedHttpMessageHandler>();
-    authHandler.InnerHandler = new HttpClientHandler();
-    
-    var httpClient = new HttpClient(authHandler)
+    var httpClient = new HttpClient
     {
         BaseAddress = new Uri(apiSettings.BaseUrl)
     };
-    
+
     return httpClient;
 });
 

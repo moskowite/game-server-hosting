@@ -1,23 +1,53 @@
 @using GameServerHosting.Client.Services
 @inject AuthenticationService AuthService
 
-<Router AppAssembly="@typeof(App).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-    </Found>
-    <NotFound>
-        <PageTitle>Not found</PageTitle>
-        <LayoutView Layout="@typeof(MainLayout)">
-            <p role="alert">Sorry, there's nothing at this address.</p>
-        </LayoutView>
-    </NotFound>
-</Router>
+<AppErrorBoundary @ref="errorBoundary" IsDevelopment="@isDevelopment">
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>Not found</PageTitle>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p role="alert">Sorry, there's nothing at this address.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</AppErrorBoundary>
 
 @code {
-    protected override async Task OnInitializedAsync()
+    private AppErrorBoundary? errorBoundary;
+    private bool isDevelopment = false;
+
+    protected override void OnInitialized()
     {
-        // Initialize authentication service when app starts
-        await AuthService.InitializeAsync();
+        // Detect if running in development mode
+        #if DEBUG
+        isDevelopment = true;
+        #endif
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Initialize authentication service after first render (when JSRuntime is ready)
+                await AuthService.InitializeAsync();
+                StateHasChanged(); // Trigger re-render with auth state
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't crash - error boundary will catch it
+                Console.Error.WriteLine($"Error initializing auth: {ex.Message}");
+            }
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Reset error boundary on navigation (call base Recover method)
+        // Note: Can't directly call Recover on the component instance
     }
 }
