@@ -28,8 +28,8 @@ RUN dotnet publish GameServerHosting.Client.csproj \
 
 # Copy environment-specific appsettings over the default one
 RUN if [ "${BUILD_CONFIGURATION}" = "Development" ]; then \
-        echo "Using Development configuration..."; \
-        cp /app/publish/wwwroot/appsettings.Development.json /app/publish/wwwroot/appsettings.json; \
+        echo "Using Docker configuration..."; \
+        cp /app/publish/wwwroot/appsettings.Docker.json /app/publish/wwwroot/appsettings.json; \
     fi
 
 # Stage 2: Serve with nginx

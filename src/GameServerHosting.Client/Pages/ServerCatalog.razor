@@ -21,6 +21,12 @@
             <p class="loading-text">Loading servers...</p>
         </div>
     }
+    else if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle"></i> @errorMessage
+        </div>
+    }
     else if (serverTypes == null || !serverTypes.Any())
     {
         <div class="empty-state">
@@ -265,6 +271,7 @@
     private List<ServerTypeDto> filteredServerTypes = new();
     private List<string> gameNames = new();
     private bool isLoading = true;
+    private string? errorMessage;
     
     // Search and Filter State
     private string _searchQuery = "";
@@ -346,7 +353,14 @@
     private async Task LoadServerTypes()
     {
         isLoading = true;
+        errorMessage = null;
         serverTypes = await ServerCatalogService.GetServerTypesAsync(isActive: true);
+        if (serverTypes == null)
+        {
+            errorMessage = "Unable to reach the API. Please try again later.";
+            isLoading = false;
+            return;
+        }
         
         if (serverTypes != null && serverTypes.Any())
         {

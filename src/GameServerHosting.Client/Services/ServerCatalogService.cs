@@ -34,7 +34,7 @@ public class ServerCatalogService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching server types: {ex.Message}");
+            Console.Error.WriteLine($"Error fetching server types from '{_httpClient.BaseAddress}api/server-types': {ex}");
             return null;
         }
     }
@@ -47,7 +47,7 @@ public class ServerCatalogService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching server type: {ex.Message}");
+            Console.Error.WriteLine($"Error fetching server type from '{_httpClient.BaseAddress}api/server-types/{id}': {ex}");
             return null;
         }
     }
