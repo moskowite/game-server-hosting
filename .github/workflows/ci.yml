@@ -200,7 +200,7 @@ jobs:
     
     - name: Upload format results
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: format-check-results
         path: format-output.log
@@ -331,7 +331,7 @@ jobs:
     
     - name: Upload coverage report
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: coverage-report
         path: ./coverage/report
@@ -347,14 +347,14 @@ jobs:
       continue-on-error: true  # Don't fail if no tests found
     
     - name: Publish API artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: api-build
         path: src/GameServerHosting.Api/bin/Release/net8.0/
         retention-days: 7
     
     - name: Publish Client artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: client-build
         path: src/GameServerHosting.Client/bin/Release/net8.0/
@@ -412,7 +412,7 @@ jobs:
     
     - name: Upload security scan results
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: security-scan-results
         path: security-scan.log
@@ -543,7 +543,7 @@ jobs:
     
     - name: Upload Trivy scan results
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: trivy-scan-${{ matrix.service }}
         path: ${{ matrix.service }}-trivy-results.json
@@ -583,14 +583,14 @@ jobs:
       run: dotnet publish src/GameServerHosting.Client/GameServerHosting.Client.csproj --configuration Release --output ./publish/client
     
     - name: Upload API publish artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: api-published
         path: ./publish/api
         retention-days: 30
     
     - name: Upload Client publish artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: client-published
         path: ./publish/client
